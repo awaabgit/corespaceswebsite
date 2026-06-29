@@ -1,0 +1,36 @@
+# Render Blueprint — deploys the CORE Spaces site as a web service.
+# In Render: New + → Blueprint → connect this repo → Apply.
+services:
+  - type: web
+    name: core-spaces-site
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT"
+    envVars:
+      # Branding — safe to keep here:
+      - key: COMPANY_NAME
+        value: "CORE Spaces"
+      - key: COMPANY_TAGLINE
+        value: "Dubai property, brokered properly."
+      - key: COMPANY_PHONE
+        value: "+971 4 000 0000"
+      - key: COMPANY_EMAIL
+        value: "hello@corespaces.ae"
+      - key: COMPANY_ADDRESS
+        value: "Business Bay, Dubai, UAE"
+      # Zoho — leave blank until OAuth done; set these as SECRETS in the Render
+      # dashboard (Environment tab). The moment all three are set, the live site
+      # switches from sample listings to real Zoho data automatically.
+      - key: ZOHO_CLIENT_ID
+        sync: false
+      - key: ZOHO_CLIENT_SECRET
+        sync: false
+      - key: ZOHO_REFRESH_TOKEN
+        sync: false
+      - key: ZOHO_PROPERTIES_MODULE
+        value: "Properties"
+      - key: ZOHO_ACCOUNTS_HOST
+        value: "https://accounts.zoho.com"
+      - key: ZOHO_API_HOST
+        value: "https://www.zohoapis.com"

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_card.html" import listing_card %}
+{% block title %}Listings — {{ company.name }}{% endblock %}
+
+{% block content %}
+<section class="container section">
+  <h1>Properties in Dubai</h1>
+
+  <form class="pillbar" action="/listings" method="get" role="search">
+    <div class="tabs-pill">
+      <a href="/listings" class="{{ 'on' if active_type == 'all' }}">All</a>
+      <a href="/listings?type=sale" class="{{ 'on' if active_type == 'sale' }}">Buy</a>
+      <a href="/listings?type=rent" class="{{ 'on' if active_type == 'rent' }}">Rent</a>
+    </div>
+    {% if active_type != 'all' %}<input type="hidden" name="type" value="{{ active_type }}">{% endif %}
+    <input class="pill-input" type="text" name="q" value="{{ q }}" placeholder="City, community or building">
+    <span class="pill-sel">
+      <select name="beds">
+        <option value="">Beds</option>
+        {% for b in [1,2,3,4,5] %}<option value="{{ b }}" {{ 'selected' if beds == b }}>{{ b }}+ beds</option>{% endfor %}
+      </select>
+    </span>
+    <span class="pill-sel">
+      <select name="max_price">
+        <option value="">Max price</option>
+        {% for p in [100000,500000,1000000,3000000,5000000,10000000] %}
+          <option value="{{ p }}" {{ 'selected' if max_price == p }}>up to {{ "{:,}".format(p) }}</option>
+        {% endfor %}
+      </select>
+    </span>
+    <button class="pill-go" type="submit">Search</button>
+  </form>
+
+  {% if listings|length %}
+    <p class="result-count muted">{{ listings|length }} propert{{ 'y' if listings|length == 1 else 'ies' }} found</p>
+    <div class="grid">
+      {% for listing in listings %}{{ listing_card(listing) }}{% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>No listings match that yet.</h3>
+      <p class="muted">Try broadening your filters, or <a href="/contact">tell us what you're after</a>.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

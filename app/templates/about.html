@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}About — {{ company.name }}{% endblock %}
+
+{% block content %}
+<section class="container section narrow">
+  <p class="eyebrow">About us</p>
+  <h1>{{ company.name }}</h1>
+  <div class="prose">
+    <p class="lead">{{ company.tagline }}</p>
+    <p>
+      We're a Dubai property team focused on a simple idea: fewer listings, better matched,
+      with people who actually answer the phone. We work across sales and lettings in the
+      communities we know best, and we'd rather tell you a place isn't right than push it.
+    </p>
+    <p>
+      <em>Placeholder copy — swap this for the real company story in the FINISH phase.</em>
+    </p>
+  </div>
+  <a class="btn" href="/contact">Get in touch</a>
+</section>
+{% endblock %}

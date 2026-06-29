@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ company.name }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{{ company.name }} — {{ company.tagline }}{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="/static/core-spaces-logo.jpg">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/">
+        <img class="brand-logo" src="/static/core-spaces-logo.jpg" alt="{{ company.name }} logo">
+        <span class="brand-name">{{ company.name }}</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="/listings?type=sale">Buy</a>
+        <a href="/listings?type=rent">Rent</a>
+        <a href="/about">About</a>
+        <a href="/contact" class="nav-cta">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="brand-name">{{ company.name }}</span>
+        <p class="muted">{{ company.tagline }}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Browse</h4>
+        <a href="/listings?type=sale">For sale</a>
+        <a href="/listings?type=rent">For rent</a>
+        <a href="/about">About us</a>
+      </div>
+      <div class="footer-col">
+        <h4>Get in touch</h4>
+        <a href="tel:{{ company.phone }}">{{ company.phone }}</a>
+        <a href="mailto:{{ company.email }}">{{ company.email }}</a>
+        <span class="muted">{{ company.address }}</span>
+      </div>
+    </div>
+    <div class="container footer-base">
+      <span class="muted">© {{ company.name }}. All rights reserved.</span>
+    </div>
+  </footer>
+</body>
+</html>

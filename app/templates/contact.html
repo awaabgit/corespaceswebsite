@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Contact — {{ company.name }}{% endblock %}
+
+{% block content %}
+<section class="container section narrow">
+  <p class="eyebrow">Contact</p>
+  <h1>Tell us what you're after</h1>
+  <p class="lead muted">Buying, selling, renting or letting — send a note and we'll come back quickly.</p>
+
+  {% if sent %}
+    <p class="success">Thanks — your message is in. We'll be in touch shortly.</p>
+  {% endif %}
+
+  <div class="contact-grid">
+    <form action="/inquire" method="post" class="form">
+      <label>Name <input type="text" name="name" required></label>
+      <label>Email <input type="email" name="email" required></label>
+      <label>Phone <input type="tel" name="phone"></label>
+      <label>Message <textarea name="message" rows="5" required></textarea></label>
+      <button type="submit" class="btn btn-full">Send message</button>
+    </form>
+    <div class="contact-info">
+      <h4>Direct</h4>
+      <p><a href="tel:{{ company.phone }}">{{ company.phone }}</a></p>
+      <p><a href="mailto:{{ company.email }}">{{ company.email }}</a></p>
+      <h4>Office</h4>
+      <p class="muted">{{ company.address }}</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

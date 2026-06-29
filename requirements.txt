@@ -1,0 +1,9 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+gunicorn>=22.0
+jinja2>=3.1
+python-multipart>=0.0.9
+python-dotenv>=1.0
+httpx>=0.27
+# Optional — only needed for the Supabase cache path (not used in demo/zoho-direct mode):
+supabase>=2.4

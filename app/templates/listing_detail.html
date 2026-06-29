@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ listing.title }} — {{ company.name }}{% endblock %}
+{% block meta_description %}{{ listing.title }} in {{ listing.location }}. {{ fmt_price(listing.price, listing.currency, listing.type) }}.{% endblock %}
+
+{% block head_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Residence",
+  "name": "{{ listing.title }}",
+  "description": "{{ listing.description|replace('"', '') }}",
+  "address": { "@type": "PostalAddress", "addressLocality": "{{ listing.location }}", "addressCountry": "AE" }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<section class="container detail">
+  <a class="back" href="/listings">← All listings</a>
+
+  <div class="gallery">
+    {% if listing.images and listing.images|length %}
+      <div class="gallery-main">
+        <img src="{{ listing.images[0] }}" alt="{{ listing.title }}">
+      </div>
+      {% if listing.images|length > 1 %}
+      <div class="gallery-thumbs">
+        {% for img in listing.images[1:5] %}
+          <img src="{{ img }}" alt="{{ listing.title }} photo {{ loop.index + 1 }}">
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="gallery-main placeholder">No photos yet</div>
+    {% endif %}
+  </div>
+
+  <div class="detail-grid">
+    <div class="detail-main">
+      <span class="tag tag-{{ listing.type }}">{{ "For sale" if listing.type == "sale" else "For rent" }}</span>
+      <h1>{{ listing.title }}</h1>
+      <p class="detail-loc">{{ listing.location }}{% if listing.community %} · {{ listing.community }}{% endif %}</p>
+      <p class="detail-price">{{ fmt_price(listing.price, listing.currency, listing.type) }}</p>
+
+      <ul class="spec-row">
+        <li><strong>{{ listing.beds }}</strong> bedrooms</li>
+        <li><strong>{{ listing.baths }}</strong> bathrooms</li>
+        <li><strong>{{ "{:,}".format(listing.area_sqft) }}</strong> sqft</li>
+        <li><strong>{{ listing.status|capitalize }}</strong></li>
+      </ul>
+
+      <div class="prose">
+        <h2>About this property</h2>
+        <p>{{ listing.description }}</p>
+      </div>
+    </div>
+
+    <aside class="detail-aside">
+      <div class="inquiry-card" id="iq">
+        <h3>Interested in this property?</h3>
+        {% if listing.agent_name %}<p class="agent muted">{{ listing.agent_name }}{% if listing.agent_phone %} · {{ listing.agent_phone }}{% endif %}</p>{% endif %}
+        <div class="contact-cta">
+          <a class="btn-call" href="tel:{{ listing.agent_phone or company.phone }}">📞 Call</a>
+          <a class="btn-wa" href="{{ wa_link(listing.agent_phone or company.phone, 'Hi, I’m interested in ' ~ listing.title) }}" target="_blank" rel="noopener">WhatsApp</a>
+        </div>
+        {% if request.query_params.get('sent') %}
+          <p class="success">Thanks — your enquiry is in. An agent will be in touch shortly.</p>
+        {% endif %}
+        <form action="/inquire" method="post" class="form">
+          <input type="hidden" name="slug" value="{{ listing.slug }}">
+          <label>Name <input type="text" name="name" required></label>
+          <label>Email <input type="email" name="email" required></label>
+          <label>Phone <input type="tel" name="phone"></label>
+          <label>Message
+            <textarea name="message" rows="3" required>I'm interested in {{ listing.title }}.</textarea>
+          </label>
+          <button type="submit" class="btn btn-full">Send enquiry</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}

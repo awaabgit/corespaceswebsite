@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Not found — {{ company.name }}{% endblock %}
+
+{% block content %}
+<section class="container section narrow center">
+  <h1>That listing isn't here</h1>
+  <p class="muted">It may have been let, sold or taken down.</p>
+  <a class="btn" href="/listings">See current listings</a>
+</section>
+{% endblock %}

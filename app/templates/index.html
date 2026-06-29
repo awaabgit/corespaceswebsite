@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_card.html" import listing_card %}
+{% block title %}{{ company.name }} — {{ company.tagline }}{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Find your next home in Dubai</h1>
+    <p class="hero-sub">A hand-picked portfolio to buy and rent — brokered by people who pick up the phone.</p>
+    <div class="searchcard">
+      <div class="search-tabs">
+        <a href="/listings?type=rent" class="on">Rent</a>
+        <a href="/listings?type=sale">Buy</a>
+      </div>
+      <form class="search-main" action="/listings" method="get" role="search">
+        <input type="text" name="q" placeholder="City, community or building" aria-label="Search">
+        <button type="submit">Search</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="container section">
+  <div class="section-head">
+    <h2>Featured listings</h2>
+    <a class="link-more" href="/listings">View all →</a>
+  </div>
+  <div class="grid">
+    {% for listing in featured %}{{ listing_card(listing) }}{% endfor %}
+  </div>
+</section>
+
+<section class="band">
+  <div class="band-inner">
+    <div>
+      <h2>Thinking of selling or letting?</h2>
+      <p class="muted">Tell us about your property and we'll come back with a realistic valuation and a plan to move it.</p>
+    </div>
+    <a class="btn" href="/contact">Talk to us</a>
+  </div>
+</section>
+{% endblock %}
