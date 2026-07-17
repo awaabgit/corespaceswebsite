@@ -157,3 +157,11 @@ MOCK_LISTINGS = [
         "agent_phone": "+971 50 000 0002",
     },
 ]
+
+# --- amenities (polish pass) — shown as chips on the listing detail page ---
+_DEFAULT_AMENITIES = [
+    "Balcony", "Central A/C", "Covered Parking", "Built-in Wardrobes",
+    "Shared Pool", "Shared Gym", "Concierge", "24/7 Security",
+]
+for _l in MOCK_LISTINGS:
+    _l.setdefault("amenities", list(_DEFAULT_AMENITIES))

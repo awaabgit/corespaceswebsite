@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import bed, bath, area, phone, whatsapp, pin, check %}
 {% block title %}{{ listing.title }} — {{ company.name }}{% endblock %}
 {% block meta_description %}{{ listing.title }} in {{ listing.location }}. {{ fmt_price(listing.price, listing.currency, listing.type) }}.{% endblock %}
 
@@ -39,19 +40,36 @@
     <div class="detail-main">
       <span class="tag tag-{{ listing.type }}">{{ "For sale" if listing.type == "sale" else "For rent" }}</span>
       <h1>{{ listing.title }}</h1>
-      <p class="detail-loc">{{ listing.location }}{% if listing.community %} · {{ listing.community }}{% endif %}</p>
+      <p class="detail-loc">{{ pin() }} {{ listing.location }}{% if listing.community %} · {{ listing.community }}{% endif %}</p>
       <p class="detail-price">{{ fmt_price(listing.price, listing.currency, listing.type) }}</p>
 
       <ul class="spec-row">
-        <li><strong>{{ listing.beds }}</strong> bedrooms</li>
-        <li><strong>{{ listing.baths }}</strong> bathrooms</li>
-        <li><strong>{{ "{:,}".format(listing.area_sqft) }}</strong> sqft</li>
-        <li><strong>{{ listing.status|capitalize }}</strong></li>
+        <li>{{ bed() }} <strong>{{ listing.beds }}</strong> bedrooms</li>
+        <li>{{ bath() }} <strong>{{ listing.baths }}</strong> bathrooms</li>
+        <li>{{ area() }} <strong>{{ "{:,}".format(listing.area_sqft) }}</strong> sqft</li>
+        <li><span class="status-dot"></span> <strong>{{ listing.status|capitalize }}</strong></li>
       </ul>
 
       <div class="prose">
         <h2>About this property</h2>
         <p>{{ listing.description }}</p>
+      </div>
+
+      {% if listing.amenities and listing.amenities|length %}
+      <div class="amenities">
+        <h2>Amenities</h2>
+        <ul class="amenity-list">
+          {% for a in listing.amenities %}<li>{{ check() }} {{ a }}</li>{% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div class="mapblock">
+        <h2>Location</h2>
+        <a class="map-btn" target="_blank" rel="noopener"
+           href="https://www.google.com/maps/search/?api=1&query={{ (listing.community ~ ' ' ~ listing.location ~ ' Dubai')|urlencode }}">
+          {{ pin() }} View {{ listing.location }} on map
+        </a>
       </div>
     </div>
 
@@ -60,8 +78,8 @@
         <h3>Interested in this property?</h3>
         {% if listing.agent_name %}<p class="agent muted">{{ listing.agent_name }}{% if listing.agent_phone %} · {{ listing.agent_phone }}{% endif %}</p>{% endif %}
         <div class="contact-cta">
-          <a class="btn-call" href="tel:{{ listing.agent_phone or company.phone }}">📞 Call</a>
-          <a class="btn-wa" href="{{ wa_link(listing.agent_phone or company.phone, 'Hi, I’m interested in ' ~ listing.title) }}" target="_blank" rel="noopener">WhatsApp</a>
+          <a class="btn-call" href="tel:{{ listing.agent_phone or company.phone }}">{{ phone() }} Call</a>
+          <a class="btn-wa" href="{{ wa_link(listing.agent_phone or company.phone, 'Hi, I’m interested in ' ~ listing.title) }}" target="_blank" rel="noopener">{{ whatsapp() }} WhatsApp</a>
         </div>
         {% if request.query_params.get('sent') %}
           <p class="success">Thanks — your enquiry is in. An agent will be in touch shortly.</p>

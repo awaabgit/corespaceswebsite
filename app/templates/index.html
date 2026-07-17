@@ -3,14 +3,21 @@
 {% block title %}{{ company.name }} — {{ company.tagline }}{% endblock %}
 
 {% block content %}
-<section class="hero">
+<section class="hero has-slider">
+  <div class="hero-slides" id="heroSlides">
+    <div class="hero-slide is-active" style="background-image:url('/static/hero/hero1.jpg')"></div>
+    <div class="hero-slide" style="background-image:url('/static/hero/hero2.jpg')"></div>
+    <div class="hero-slide" style="background-image:url('/static/hero/hero3.jpg')"></div>
+    <div class="hero-slide" style="background-image:url('/static/hero/hero4.jpg')"></div>
+  </div>
   <div class="hero-inner">
-    <h1>Find your next home in Dubai</h1>
-    <p class="hero-sub">A hand-picked portfolio to buy and rent — brokered by people who pick up the phone.</p>
-    <div class="searchcard">
-      <div class="search-tabs">
-        <a href="/listings?type=rent" class="on">Rent</a>
-        <a href="/listings?type=sale">Buy</a>
+    <h1 class="hero-anim">Find your next home in Dubai</h1>
+    <p class="hero-sub hero-anim">A hand-picked portfolio to buy and rent — brokered by people who pick up the phone.</p>
+    <div class="searchcard hero-anim">
+      <div class="search-tabs" id="searchTabs">
+        <span class="tab-slider"></span>
+        <a href="/listings?type=rent" class="on" data-tab="0">Rent</a>
+        <a href="/listings?type=sale" data-tab="1">Buy</a>
       </div>
       <form class="search-main" action="/listings" method="get" role="search">
         <input type="text" name="q" placeholder="City, community or building" aria-label="Search">
@@ -21,7 +28,7 @@
 </section>
 
 <section class="container section">
-  <div class="section-head">
+  <div class="section-head reveal">
     <h2>Featured listings</h2>
     <a class="link-more" href="/listings">View all →</a>
   </div>
@@ -30,7 +37,7 @@
   </div>
 </section>
 
-<section class="band">
+<section class="band reveal">
   <div class="band-inner">
     <div>
       <h2>Thinking of selling or letting?</h2>

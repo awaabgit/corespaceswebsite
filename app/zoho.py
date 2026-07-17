@@ -122,6 +122,17 @@ def _images(rec: dict[str, Any]) -> list[str]:
     return [p.strip() for p in parts if p.strip().startswith("http")]
 
 
+def _amenities(rec: dict[str, Any]) -> list[str]:
+    """Read an 'Amenities' field (multi-line or comma-separated) into a list."""
+    raw = _pick(rec, "Amenities", "Amenity", default="")
+    if isinstance(raw, list):
+        return [str(a).strip() for a in raw if str(a).strip()]
+    if not raw:
+        return []
+    parts = str(raw).replace(",", "\n").splitlines()
+    return [p.strip() for p in parts if p.strip()]
+
+
 def _is_published(rec: dict[str, Any]) -> bool:
     # Checkbox controlling what's public — tolerate label variants.
     return bool(_pick(rec, "Publish_to_Web", "Publish_to_web", "publish_to_web", default=False))
@@ -148,6 +159,7 @@ def _normalise(rec: dict[str, Any]) -> dict[str, Any]:
         "featured": bool(_pick(rec, "Featured", default=False)),
         "description": _pick(rec, "Description", default=""),
         "images": _images(rec),
+        "amenities": _amenities(rec),
         "agent_name": _pick(rec, "Agent_Name", "Agent_line", default=""),
         "agent_phone": _pick(rec, "Agent_Phone", default=""),
         "_zoho_id": str(rec.get("id")),

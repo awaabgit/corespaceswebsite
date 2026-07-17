@@ -153,3 +153,59 @@ h2{font-size:clamp(1.45rem,2.6vw,2rem)}
 .footer-col a:hover{color:#fff}
 .footer-base{border-top:1px solid rgba(255,255,255,.14);padding:1.1rem 24px;font-size:.82rem;color:rgba(255,255,255,.6);max-width:var(--maxw);margin:0 auto}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ============================ POLISH PASS ============================ */
+/* SVG icons */
+.ic{width:16px;height:16px;display:inline-block;vertical-align:-3px;flex:0 0 auto}
+.ic-sm{width:13px;height:13px;display:inline-block;vertical-align:-2px}
+.card-specs li{gap:.35rem}
+.card-specs .ic{color:var(--green)}
+.btn-call .ic,.btn-wa .ic{width:15px;height:15px;vertical-align:-3px}
+.detail-loc .ic{color:var(--gold-deep)}
+.verified .ic-sm{color:var(--green)}
+
+/* hero carousel */
+.hero.has-slider{position:relative;overflow:hidden}
+.hero-slides{position:absolute;inset:0;z-index:0}
+.hero-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transform:scale(1.06);transition:opacity 1.4s ease, transform 6s ease}
+.hero-slide.is-active{opacity:1;transform:scale(1)}
+.hero.has-slider:after{content:"";position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(6,55,45,.72),rgba(6,55,45,.60)),radial-gradient(80% 90% at 82% -10%,rgba(213,180,88,.18),transparent 60%)}
+.hero.has-slider .hero-inner{position:relative;z-index:2}
+
+/* hero content entrance */
+.hero-anim{opacity:0;transform:translateY(14px);animation:heroIn .7s ease forwards}
+.hero-anim:nth-child(1){animation-delay:.05s}
+.hero .hero-sub.hero-anim{animation-delay:.18s}
+.hero .searchcard.hero-anim{animation-delay:.32s}
+@keyframes heroIn{to{opacity:1;transform:translateY(0)}}
+
+/* animated Buy/Rent tab slider */
+.search-tabs{position:relative}
+.tab-slider{position:absolute;top:3px;bottom:3px;left:0;width:0;background:var(--green);border-radius:var(--r-sm);transition:transform .28s cubic-bezier(.4,0,.2,1),width .28s cubic-bezier(.4,0,.2,1);z-index:0}
+.search-tabs a{position:relative;z-index:1;transition:color .2s}
+.search-tabs a.on{background:transparent}
+
+/* scroll reveal */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+.card.reveal{transition-delay:.03s}
+
+/* status dot */
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green-s,#10B981);vertical-align:1px;margin-right:2px}
+
+/* amenities */
+.amenities{margin-top:1.6rem}
+.amenity-list{list-style:none;padding:0;margin:.6rem 0 0;display:grid;grid-template-columns:1fr 1fr;gap:.55rem 1.2rem}
+@media(max-width:520px){.amenity-list{grid-template-columns:1fr}}
+.amenity-list li{display:flex;align-items:center;gap:.5rem;font-size:.92rem;color:var(--ink)}
+.amenity-list .ic-sm{color:var(--green);flex:0 0 auto}
+
+/* map button */
+.mapblock{margin-top:1.6rem}
+.map-btn{display:inline-flex;align-items:center;gap:.5rem;margin-top:.5rem;padding:.7rem 1.2rem;border:1px solid var(--line);border-radius:100px;font-weight:600;font-size:.9rem;color:var(--green);transition:.15s;background:var(--panel)}
+.map-btn:hover{border-color:var(--green);background:#fff}
+.map-btn .ic{color:var(--gold-deep)}
+
+/* smoother global */
+.card,.btn,.btn-call,.btn-wa,.nav-cta,.map-btn,.tab,.pill-go{transition:all .18s ease}
