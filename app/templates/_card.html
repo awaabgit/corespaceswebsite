@@ -9,6 +9,7 @@
     {% endif %}
     <span class="tag tag-{{ listing.type }}">{{ "For sale" if listing.type == "sale" else "For rent" }}</span>
     <span class="verified">{{ verified() }} Verified</span>
+    {% if listing.off_plan %}<span class="tag tag-offplan">Off Plan</span>{% endif %}
   </a>
   <a href="/listings/{{ listing.slug }}" class="card-body">
     <p class="card-price">{{ fmt_price(listing.price, listing.currency, listing.type) }}</p>

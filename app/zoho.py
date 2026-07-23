@@ -17,6 +17,7 @@ creds are present, so the app still imports and runs fine in mock mode.
 """
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -107,12 +108,49 @@ def _pick(rec: dict[str, Any], *keys: str, default: Any = None) -> Any:
     return default
 
 
+def _upload_field_images(rec: dict[str, Any]) -> list[str]:
+    """
+    Read photos from a Zoho IMAGE UPLOAD field (agents upload from phone/computer).
+
+    Zoho returns such a field as a list of dicts, e.g.
+        [{"File_Id__s": "abc123", "File_Name__s": "front.jpg", ...}, ...]
+
+    Those files sit behind Zoho auth, so a browser can't load them directly.
+    We turn each into a URL on OUR site — /img/<record_id>/<file_id> — which the
+    app fetches server-side with the Zoho token and streams back (see app/main.py).
+    """
+    raw = _pick(rec, "Property_Photos", "Property_Photo", "Image_Upload_1",
+                "Photos_Upload", "Images_Upload", default=None)
+    rid = str(rec.get("id") or "")
+    if not raw or not rid:
+        return []
+    if isinstance(raw, dict):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+
+    out: list[str] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        fid = (item.get("File_Id__s") or item.get("file_Id__s")
+               or item.get("attachment_Id") or item.get("id"))
+        if fid:
+            out.append(f"/img/{rid}/{fid}")
+    return out
+
+
 def _images(rec: dict[str, Any]) -> list[str]:
     """
-    Read listing photos from an 'Image URLs' field (multi-line). For the demo,
-    agents paste one image URL per line (or comma-separated) — no Supabase needed.
-    If a list was already provided (sync path), use it as-is.
+    Listing photos, from either source:
+      1. the Image Upload field  -> proxied through our own /img/... route
+      2. an 'Image URLs' text field (one link per line) -> used as-is
+    Uploads win when both exist. A list already provided (sync path) is used as-is.
     """
+    uploaded = _upload_field_images(rec)
+    if uploaded:
+        return uploaded
+
     raw = _pick(rec, "Image_URLs", "Image_URL", "Images", "Photos", default="")
     if isinstance(raw, list):
         return [str(u).strip() for u in raw if str(u).strip()]
@@ -120,6 +158,42 @@ def _images(rec: dict[str, Any]) -> list[str]:
         return []
     parts = str(raw).replace(",", "\n").splitlines()
     return [p.strip() for p in parts if p.strip().startswith("http")]
+
+
+def download_field_image(record_id: str, file_id: str) -> tuple[bytes, str] | None:
+    """
+    Fetch one uploaded image from Zoho using the server's OAuth token.
+    Returns (bytes, content_type) or None.
+
+    Zoho's download path for image-upload fields has moved between API versions,
+    so we try the known endpoints in order and use whichever answers.
+    """
+    module = config.ZOHO_PROPERTIES_MODULE
+    host = config.ZOHO_API_HOST
+    candidates = [
+        (f"{host}/crm/v8/{module}/{record_id}/actions/download_fields_attachment",
+         {"fields_attachment_id": file_id}),
+        (f"{host}/crm/v7/{module}/{record_id}/actions/download_fields_attachment",
+         {"fields_attachment_id": file_id}),
+        (f"{host}/crm/v2/{module}/{record_id}/actions/download_fields_attachment",
+         {"fields_attachment_id": file_id}),
+        (f"{host}/crm/v2/{module}/{record_id}/Attachments/{file_id}", None),
+    ]
+    try:
+        headers = _headers()
+    except Exception:
+        return None
+
+    with httpx.Client(timeout=45, follow_redirects=True) as client:
+        for url, params in candidates:
+            try:
+                resp = client.get(url, headers=headers, params=params)
+            except Exception:
+                continue
+            ctype = resp.headers.get("content-type", "")
+            if resp.status_code == 200 and resp.content and "json" not in ctype:
+                return resp.content, (ctype or "image/jpeg")
+    return None
 
 
 def _amenities(rec: dict[str, Any]) -> list[str]:
@@ -134,15 +208,59 @@ def _amenities(rec: dict[str, Any]) -> list[str]:
 
 
 def _is_published(rec: dict[str, Any]) -> bool:
-    # Checkbox controlling what's public — tolerate label variants.
-    return bool(_pick(rec, "Publish_to_Web", "Publish_to_web", "publish_to_web", default=False))
+    """
+    A listing is public when the agent ticks 'Publish to Web' AND the status is
+    still live. Sold / Off Market are hidden automatically, so a sold property
+    never lingers on the site because someone forgot to untick the box.
+    """
+    if not bool(_pick(rec, "Publish_to_Web", "Publish_to_web", "publish_to_web", default=False)):
+        return False
+    status = str(_pick(rec, "Status", default="") or "").lower()
+    if "sold" in status or "off market" in status or "off-market" in status:
+        return False
+    return True
+
+
+def _split_agent(rec: dict[str, Any]) -> tuple[str, str]:
+    """
+    'Agent Contact' holds name + phone in one field, e.g. "Sara - +971 50 123 4567".
+    Split it into (name, phone). Falls back to the older separate fields.
+    """
+    name = _pick(rec, "Agent_Name", "Agent_line", default="")
+    phone = _pick(rec, "Agent_Phone", default="")
+    if name or phone:
+        return str(name), str(phone)
+
+    raw = str(_pick(rec, "Agent_Contact", "Agent_contact", default="") or "").strip()
+    if not raw:
+        return "", ""
+    # phone = the longest run of digits/+/spaces at the end
+    m = re.search(r"[+\d][\d\s\-()]{6,}$", raw)
+    if m:
+        phone = m.group(0).strip()
+        name = raw[: m.start()].strip(" -–—|,")
+        return name, phone
+    return raw, ""
+
+
+def _listing_type(rec: dict[str, Any]) -> str:
+    """
+    Buy vs Rent. The module no longer has a Listing Type field, so we read it from
+    Status (e.g. "For Rent - Available"). Anything not mentioning rent = sale.
+    """
+    explicit = str(_pick(rec, "Listing_Type", "Listing_Type1", "listing_type", default="") or "").lower()
+    if "rent" in explicit:
+        return "rent"
+    if "sale" in explicit:
+        return "sale"
+    status = str(_pick(rec, "Status", default="") or "").lower()
+    return "rent" if "rent" in status or "let" in status else "sale"
 
 
 def _normalise(rec: dict[str, Any]) -> dict[str, Any]:
     title = _pick(rec, "Name", "Title", default="Untitled listing")
-    ltype = str(_pick(rec, "Listing_Type", "Listing_Type1", "listing_type", default="sale")).lower()
-    if ltype not in ("sale", "rent"):
-        ltype = "rent" if "rent" in ltype else "sale"
+    ltype = _listing_type(rec)
+    agent_name, agent_phone = _split_agent(rec)
     return {
         "id": str(rec.get("id")),
         "slug": _pick(rec, "Slug") or _slugify(f"{title}-{rec.get('id')}"),
@@ -156,12 +274,13 @@ def _normalise(rec: dict[str, Any]) -> dict[str, Any]:
         "location": _pick(rec, "Location", default=""),
         "community": _pick(rec, "Community", default=""),
         "status": str(_pick(rec, "Status", default="available")).lower(),
+        "off_plan": "off plan" in str(_pick(rec, "Status", default="") or "").lower(),
         "featured": bool(_pick(rec, "Featured", default=False)),
         "description": _pick(rec, "Description", default=""),
         "images": _images(rec),
         "amenities": _amenities(rec),
-        "agent_name": _pick(rec, "Agent_Name", "Agent_line", default=""),
-        "agent_phone": _pick(rec, "Agent_Phone", default=""),
+        "agent_name": agent_name,
+        "agent_phone": agent_phone,
         "_zoho_id": str(rec.get("id")),
     }
 

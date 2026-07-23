@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -125,6 +125,39 @@ def inquire(
     # back to where they came from with a success flag
     target = f"/listings/{slug}?sent=1" if slug else "/contact?sent=1"
     return RedirectResponse(target, status_code=303)
+
+
+# ---------------------------------------------------------------- image proxy
+# Photos uploaded by agents into Zoho's Image Upload field sit behind Zoho auth,
+# so a visitor's browser can't load them directly. This route fetches the file
+# server-side with our Zoho token and streams it back like a normal image.
+# Results are cached in memory so we don't hit Zoho on every page view.
+_IMG_CACHE: dict[str, tuple[bytes, str]] = {}
+_IMG_CACHE_MAX = 200
+
+
+@app.get("/img/{record_id}/{file_id}")
+def property_image(record_id: str, file_id: str):
+    key = f"{record_id}/{file_id}"
+    hit = _IMG_CACHE.get(key)
+    if hit is None:
+        if not config.zoho_enabled():
+            return Response(status_code=404)
+        try:
+            from . import zoho
+            got = zoho.download_field_image(record_id, file_id)
+        except Exception:
+            got = None
+        if not got:
+            return Response(status_code=404)
+        if len(_IMG_CACHE) >= _IMG_CACHE_MAX:
+            _IMG_CACHE.pop(next(iter(_IMG_CACHE)), None)
+        _IMG_CACHE[key] = got
+        hit = got
+
+    body, ctype = hit
+    return Response(content=body, media_type=ctype,
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/health")
