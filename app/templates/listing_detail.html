@@ -44,9 +44,9 @@
       <p class="detail-price">{{ fmt_price(listing.price, listing.currency, listing.type) }}</p>
 
       <ul class="spec-row">
-        <li>{{ bed() }} <strong>{{ listing.beds }}</strong> bedrooms</li>
-        <li>{{ bath() }} <strong>{{ listing.baths }}</strong> bathrooms</li>
-        <li>{{ area() }} <strong>{{ fmt_area(listing.area_sqft) }}</strong> sqft</li>
+        {% if listing.beds %}<li>{{ bed() }} <strong>{{ listing.beds }}</strong> bedrooms</li>{% endif %}
+        {% if listing.baths %}<li>{{ bath() }} <strong>{{ listing.baths }}</strong> bathrooms</li>{% endif %}
+        {% if listing.area_sqft %}<li>{{ area() }} <strong>{{ fmt_area(listing.area_sqft) }}</strong> sqft</li>{% endif %}
         <li><span class="status-dot"></span> <strong>{{ listing.status|capitalize }}</strong></li>
       </ul>
 

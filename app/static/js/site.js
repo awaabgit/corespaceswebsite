@@ -70,18 +70,30 @@
   });
 })();
 
-// ---- Hero video: use it only if the file actually exists ----
+// ---- Hero video: show it only once it can actually play ----
 (function () {
   var v = document.getElementById('heroVideo');
   if (!v) return;
-  // skip the video on small screens, slow links or data-saver — images instead
+  // skip on small screens, slow links or data-saver — images look better there
   var conn = navigator.connection || {};
   var lowData = conn.saveData === true ||
                 (conn.effectiveType && /2g/.test(conn.effectiveType));
   if (window.innerWidth < 700 || lowData) { v.remove(); return; }
-  v.addEventListener('loadeddata', function () {
-    if (v.videoWidth > 0) { v.classList.add('on'); v.play().catch(function () {}); }
+
+  var shown = false;
+  function show() {
+    if (shown || !v.videoWidth) return;
+    shown = true;
+    v.classList.add('on');
+    var play = v.play();
+    if (play && play.catch) play.catch(function () {});
+  }
+  ['loadeddata', 'canplay', 'canplaythrough', 'playing'].forEach(function (ev) {
+    v.addEventListener(ev, show);
   });
   v.addEventListener('error', function () { v.remove(); });
+  // some browsers report readiness without firing an event
+  setTimeout(function () { if (!shown && v.readyState >= 2) show(); }, 1200);
+  setTimeout(function () { if (!shown) v.remove(); }, 6000);  // give up -> images
   v.load();
 })();

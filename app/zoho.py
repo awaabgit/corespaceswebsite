@@ -172,11 +172,14 @@ def _upload_field_images(rec: dict[str, Any]) -> list[str]:
     We turn each into a URL on OUR site — /img/<record_id>/<file_id> — which the
     app fetches server-side with the Zoho token and streams back (see app/main.py).
     """
-    raw = _pick(rec, "Property_Photos", "Property_Photo", "Image_Upload_1",
-                "Photos_Upload", "Images_Upload", default=None)
+    raw = _pick(rec, "Image_Upload", "Property_Photos", "Property_Photo",
+                "Image_Upload_1", "Photos_Upload", "Images_Upload",
+                "Record_Image", default=None)
     rid = str(rec.get("id") or "")
     if not raw or not rid:
         return []
+    if isinstance(raw, str):
+        return [raw] if raw.startswith("http") else []
     if isinstance(raw, dict):
         raw = [raw]
     if not isinstance(raw, list):
@@ -185,6 +188,11 @@ def _upload_field_images(rec: dict[str, Any]) -> list[str]:
     out: list[str] = []
     for item in raw:
         if not isinstance(item, dict):
+            continue
+        direct = (item.get("File_URL__s") or item.get("url")
+                  or item.get("download_Url") or item.get("preview_Url"))
+        if isinstance(direct, str) and direct.startswith("http"):
+            out.append(direct)
             continue
         fid = (item.get("File_Id__s") or item.get("file_Id__s")
                or item.get("attachment_Id") or item.get("id"))

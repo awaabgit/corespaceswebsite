@@ -1,58 +1,41 @@
-# CORE Spaces site — update
+# v4 — icon size, stale CSS, and the photo fix
 
-## YOUR MODULE'S API NAME IS `CustomModule7`
-Confirmed from the Zoho URL. Either:
-  * set `ZOHO_PROPERTIES_MODULE=CustomModule7` in Render's Environment, **or**
-  * just deploy this build — it finds the module by itself (below).
+## Why it looked broken
+Two separate things, both now fixed.
 
-## THE FIX FOR "properties not showing"
-Renaming a module in Zoho changes its **label**, not its **API name**. A module
-displayed as "Properties" can still be `Properties_New` or `CustomModule7`, so
-the site was asking Zoho for a module that doesn't exist.
+### 1. Stale stylesheet (the giant icons / janky search bar / janky video)
+The stylesheet was linked as a plain `/static/css/styles.css`, so browsers kept
+serving the **cached old copy** alongside the new HTML. With the new markup but
+the old CSS:
+  * SVG icons had no size rule -> rendered at default size (huge)
+  * the Buy/Rent slider and hero video had no positioning -> looked janky
+  * the new filter dropdowns were unstyled -> looked missing
 
-The site now **finds the module itself**: it asks Zoho for the module list and
-matches on label or API name, caching the result for an hour. Nothing to
-configure — a renamed module keeps working.
+Fixed three ways so it cannot happen again:
+  * CSS and JS are now served as `styles.css?v=<hash-of-file>` — the URL changes
+    whenever the file changes, so a new copy is always fetched.
+  * every icon carries `width`/`height` **on the SVG itself**, so size no longer
+    depends on CSS loading at all.
+  * a `max-width:18px` ceiling on icons inside buttons and spec rows.
 
-### If listings still don't appear, open this first:
-    https://<your-site>/debug/zoho
-It tells you in plain terms:
-  * which modules Zoho can see (with their real API names)
-  * which one it resolved to
-  * how many records came back, and how many are published
-  * the exact field names on the first record
-  * a hint about what's wrong
-Send me that page's output and I can pinpoint it immediately.
+If you ever still see a stale page: **Ctrl+Shift+R** forces a hard refresh.
 
-## Also in this update
-* **Mobile responsive pass** — search/filters stack properly on phones, no
-  sideways scrolling, bigger tap targets, header and hero scale down.
-* **Bigger CORE Spaces title**, sized in proportion with the logo.
-* **More filters** (Property Finder style): beds, baths, min size (sqft),
-  min price, max price, status (Ready / Off Plan / Available).
-* **Favicon** — proper .ico + PNG + Apple touch icon, generated from the logo.
-* **Basic Google SEO** — canonical URLs, Open Graph + Twitter cards, RealEstateAgent
-  structured data, `/robots.txt`, `/sitemap.xml` (includes every listing).
-* **Share button** on each property — native share sheet on phones, copy-link on
-  desktop.
-* **Hero video — installed.** Your Higgsfield clip is in and playing.
-  Compressed from 62 MB to 2.7 MB (1600px, silent, 15s loop) so the page still
-  loads fast; a poster frame shows instantly while it starts. On phones, slow
-  connections or data-saver it skips the video and uses the image slideshow.
-  To swap it later, replace `app/static/hero/hero.mp4`.
-* Number handling: commas tolerated, decimals kept (695.56 stays 695.56).
+### 2. Photos from the CRM not showing
+Your Zoho photo field is named **`Image_Upload`**; the code was looking for
+`Property_Photos`. It now reads `Image_Upload` (plus older names and
+`Record_Image`) and handles every shape Zoho returns it in — list, single entry,
+plain URL, or an entry carrying a direct file URL.
 
-## Zoho status values (already set) — how they behave
-    Available - Off Plan  -> Buy tab + "Off Plan" badge
-    Available Ready       -> Buy tab
-    For Rent - Available  -> RENT tab
-    Under Offer           -> Buy tab
-    Sold / Off Market     -> hidden from the site automatically
+Empty photo field now shows a **branded CORE placeholder**, not grey "No photo".
+Bedrooms / bathrooms / size are hidden when empty instead of printing "0".
 
-## FINISH checklist
-- [ ] Push, then open `/debug/zoho` and confirm `resolved_module` + record count.
-- [ ] Add a property, upload photos, tick Publish to Web -> check it appears.
-- [ ] If the listing shows but photos don't: Zoho moved the image-download
-      endpoint between API versions; the code tries v8, v7, v2 and attachments.
-      Send me a record id and I'll fix it.
-- [ ] Host swap (Render free tier shows a wake-up page) — planned separately.
+## After deploying
+1. Hard-refresh once (**Ctrl+Shift+R**).
+2. Upload photos to a property in Zoho, tick Publish to Web, check the site.
+3. If photos still don't load, open `/debug/zoho`, then try one image directly:
+       https://corespaces.info/img/<record_id>/<file_id>
+   Send me what that returns — Zoho moved this endpoint between API versions and
+   the code tries v8, v7, v2 and attachments in order.
+
+## Still open
+* Host swap (Render free tier shows a wake-up page on cold start).

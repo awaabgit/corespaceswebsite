@@ -42,7 +42,7 @@
   }
   </script>
 
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_v }}">
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -88,6 +88,6 @@
       <span class="muted">© {{ company.name }}. All rights reserved.</span>
     </div>
   </footer>
-  <script src="/static/js/site.js" defer></script>
+  <script src="/static/js/site.js?v={{ asset_v }}" defer></script>
 </body>
 </html>

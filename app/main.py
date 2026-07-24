@@ -41,6 +41,31 @@ def _fmt_price(value: float, currency: str = "AED", listing_type: str = "sale") 
 
 
 
+
+def _asset_version() -> str:
+    """
+    Cache-buster for CSS/JS.
+
+    Browsers hold on to stylesheets hard. After a deploy the new HTML would load
+    with the OLD cached stylesheet, so icons render unsized (huge), the search
+    slider and hero video lose their positioning, and the page looks broken.
+    Appending a hash of the file contents makes the URL change whenever the file
+    changes, so a fresh copy is always fetched — and cached normally otherwise.
+    """
+    import hashlib, pathlib
+    h = hashlib.md5()
+    for rel in ("static/css/styles.css", "static/js/site.js"):
+        f = pathlib.Path(__file__).parent / rel
+        try:
+            h.update(f.read_bytes())
+        except OSError:
+            pass
+    return h.hexdigest()[:10]
+
+
+ASSET_V = _asset_version()
+
+
 def _base_url(request) -> str:
     """Public base URL, honouring the proxy headers Render sets."""
     fwd_proto = request.headers.get("x-forwarded-proto")
@@ -87,6 +112,7 @@ templates.env.globals.update(
     },
     fmt_price=_fmt_price,
     fmt_area=_fmt_area,
+    asset_v=ASSET_V,
     base_url=_base_url,
     canonical_url=_canonical_url,
     wa_link=_wa_link,

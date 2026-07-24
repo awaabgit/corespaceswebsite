@@ -267,3 +267,19 @@ img,video{max-width:100%;height:auto}
 .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none}
 .hero-video.on{display:block}
 .hero-video.on ~ .hero-slides{display:none}
+
+/* branded photo placeholder (used until an agent uploads images) */
+.card-media.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;
+  background:linear-gradient(160deg,#0A463A 0%,#06372D 100%);color:rgba(255,255,255,.62);
+  font-size:.78rem;letter-spacing:.04em;min-height:210px}
+.card-media.placeholder .ph-logo{width:44px;height:44px;border-radius:50%;opacity:.85}
+
+/* Hard ceiling on icon size — protects against any stale-CSS or specificity issue */
+.card-actions svg, .btn-call svg, .btn-wa svg,
+.card-specs svg, .spec-row svg, .share-btn svg, .map-btn svg,
+.verified svg, .amenity-list svg, .detail-loc svg{
+  max-width:18px; max-height:18px; flex:0 0 auto;
+}
+.card-actions .btn-call, .card-actions .btn-wa{
+  display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+}
