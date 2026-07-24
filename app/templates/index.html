@@ -4,6 +4,12 @@
 
 {% block content %}
 <section class="hero has-slider">
+  {# Drop a file at app/static/hero/hero.mp4 and it plays instead of the image
+     slideshow. No code change needed — the images stay as the fallback. #}
+  <video class="hero-video" id="heroVideo" autoplay muted loop playsinline
+         poster="/static/hero/hero-poster.jpg" preload="metadata">
+    <source src="/static/hero/hero.mp4" type="video/mp4">
+  </video>
   <div class="hero-slides" id="heroSlides">
     <div class="hero-slide is-active" style="background-image:url('/static/hero/hero1.jpg')"></div>
     <div class="hero-slide" style="background-image:url('/static/hero/hero2.jpg')"></div>

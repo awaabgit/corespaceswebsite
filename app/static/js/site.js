@@ -45,3 +45,43 @@
   }, { threshold: 0.12 });
   els.forEach(function (e) { io.observe(e); });
 })();
+
+// ---- Share button (native share sheet on phones, copy link on desktop) ----
+(function () {
+  document.querySelectorAll('[data-share]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var url = window.location.href;
+      var title = btn.getAttribute('data-title') || document.title;
+      var text = btn.getAttribute('data-text') || title;
+      if (navigator.share) {
+        try { await navigator.share({ title: title, text: text, url: url }); return; }
+        catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        var original = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.textContent = 'Link copied';
+        setTimeout(function () { btn.classList.remove('copied'); btn.innerHTML = original; }, 1800);
+      } catch (e) {
+        window.prompt('Copy this link:', url);
+      }
+    });
+  });
+})();
+
+// ---- Hero video: use it only if the file actually exists ----
+(function () {
+  var v = document.getElementById('heroVideo');
+  if (!v) return;
+  // skip the video on small screens, slow links or data-saver — images instead
+  var conn = navigator.connection || {};
+  var lowData = conn.saveData === true ||
+                (conn.effectiveType && /2g/.test(conn.effectiveType));
+  if (window.innerWidth < 700 || lowData) { v.remove(); return; }
+  v.addEventListener('loadeddata', function () {
+    if (v.videoWidth > 0) { v.classList.add('on'); v.play().catch(function () {}); }
+  });
+  v.addEventListener('error', function () { v.remove(); });
+  v.load();
+})();

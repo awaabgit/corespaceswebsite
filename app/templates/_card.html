@@ -18,7 +18,7 @@
     <ul class="card-specs">
       <li>{{ bed() }} {{ listing.beds }}</li>
       <li>{{ bath() }} {{ listing.baths }}</li>
-      <li>{{ area() }} {{ "{:,}".format(listing.area_sqft) }} sqft</li>
+      <li>{{ area() }} {{ fmt_area(listing.area_sqft) }} sqft</li>
     </ul>
   </a>
   <div class="card-actions">

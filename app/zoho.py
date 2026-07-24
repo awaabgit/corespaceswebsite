@@ -57,16 +57,69 @@ def _headers() -> dict[str, str]:
     return {"Authorization": f"Zoho-oauthtoken {_get_access_token()}"}
 
 
+_MODULE_CACHE: dict[str, Any] = {"name": None, "at": 0.0}
+
+
+def list_modules() -> list[dict[str, Any]]:
+    """Every module in the org, with API names and labels (for diagnostics)."""
+    url = f"{config.ZOHO_API_HOST}/crm/v2/settings/modules"
+    with httpx.Client(timeout=45) as client:
+        resp = client.get(url, headers=_headers())
+        resp.raise_for_status()
+        return resp.json().get("modules", [])
+
+
+def resolve_module() -> str:
+    """
+    Find the real API name of the Properties module.
+
+    Renaming a module's LABEL in Zoho does not change its API name — a module
+    shown as "Properties" can still be api_name 'Properties_New' or
+    'CustomModule7'. So instead of trusting one hard-coded name we ask Zoho for
+    the module list and match on label or api_name, then cache it for an hour.
+    Falls back to the configured name if the lookup fails.
+    """
+    configured = config.ZOHO_PROPERTIES_MODULE
+    now = time.time()
+    if _MODULE_CACHE["name"] and now - _MODULE_CACHE["at"] < 3600:
+        return _MODULE_CACHE["name"]
+
+    try:
+        modules = list_modules()
+    except Exception:
+        return configured
+
+    def norm(x: str) -> str:
+        return "".join(ch for ch in str(x or "").lower() if ch.isalnum())
+
+    want = norm(configured) or "properties"
+    best = None
+    for m in modules:
+        api = m.get("api_name", "")
+        labels = [m.get("plural_label"), m.get("singular_label"), api]
+        names = {norm(l) for l in labels if l}
+        # exact match on the configured name wins outright
+        if want in names:
+            best = api
+            break
+        # otherwise accept a module whose label is clearly "properties"
+        if best is None and "properties" in names:
+            best = api
+
+    resolved = best or configured
+    _MODULE_CACHE.update({"name": resolved, "at": now})
+    return resolved
+
+
 def fetch_properties() -> list[dict[str, Any]]:
     """
     Pull all published listings from the custom Properties module and normalise
     them into the app's internal listing shape (same keys as mock_data).
 
-    The field API names below (Title, Price, Bedrooms, ...) must match what you
-    create in Zoho — see zoho/properties_module_schema.md. Adjust names there and
-    here together if you rename a field.
+    The module's API name is resolved automatically (see resolve_module), so a
+    renamed module keeps working without a config change.
     """
-    module = config.ZOHO_PROPERTIES_MODULE
+    module = resolve_module()
     base = f"{config.ZOHO_API_HOST}/crm/v2/{module}"
     listings: list[dict[str, Any]] = []
     page = 1
@@ -168,7 +221,7 @@ def download_field_image(record_id: str, file_id: str) -> tuple[bytes, str] | No
     Zoho's download path for image-upload fields has moved between API versions,
     so we try the known endpoints in order and use whichever answers.
     """
-    module = config.ZOHO_PROPERTIES_MODULE
+    module = resolve_module()
     host = config.ZOHO_API_HOST
     candidates = [
         (f"{host}/crm/v8/{module}/{record_id}/actions/download_fields_attachment",
@@ -270,7 +323,7 @@ def _normalise(rec: dict[str, Any]) -> dict[str, Any]:
         "currency": _pick(rec, "Currency_Type", "Currency", default="AED"),
         "beds": int(_num(_pick(rec, "Bedrooms"))),
         "baths": int(_num(_pick(rec, "Bathrooms"))),
-        "area_sqft": int(_num(_pick(rec, "Area_Sqft", "Area_sqft", "Area"))),
+        "area_sqft": _num(_pick(rec, "Area_Sqft", "Area_sqft", "Area")),
         "location": _pick(rec, "Location", default=""),
         "community": _pick(rec, "Community", default=""),
         "status": str(_pick(rec, "Status", default="available")).lower(),
@@ -332,9 +385,21 @@ def create_lead(name: str, email: str, phone: str, message: str, listing_title: 
 
 
 def _num(v: Any) -> float:
-    try:
+    """
+    Parse a number the way people actually type it: 2,650,000 / AED 2,650,000 /
+    695.56 / "1 340". Strips anything that isn't a digit, dot or minus so a comma
+    in the field never silently becomes 0.
+    """
+    if v is None:
+        return 0.0
+    if isinstance(v, (int, float)):
         return float(v)
-    except (TypeError, ValueError):
+    cleaned = re.sub(r"[^0-9.\-]", "", str(v))
+    if cleaned in ("", ".", "-", "-."):
+        return 0.0
+    try:
+        return float(cleaned)
+    except ValueError:
         return 0.0
 
 
@@ -343,3 +408,48 @@ def _slugify(text: str) -> str:
     while "--" in out:
         out = out.replace("--", "-")
     return out.strip("-")
+
+
+def diagnose() -> dict[str, Any]:
+    """
+    Plain-English health check for the Zoho link. Visit /debug/zoho to see it.
+    Shows which module was found, how many records came back, how many are
+    published, and the exact field names on the first record.
+    """
+    out: dict[str, Any] = {"configured_module": config.ZOHO_PROPERTIES_MODULE}
+    try:
+        mods = list_modules()
+        out["modules_visible"] = [
+            {"api_name": m.get("api_name"), "label": m.get("plural_label")}
+            for m in mods if m.get("api_name")
+        ][:60]
+    except Exception as e:
+        out["module_list_error"] = f"{type(e).__name__}: {e}"
+
+    try:
+        module = resolve_module()
+        out["resolved_module"] = module
+        url = f"{config.ZOHO_API_HOST}/crm/v2/{module}"
+        with httpx.Client(timeout=45) as client:
+            resp = client.get(url, headers=_headers(), params={"per_page": 5})
+        out["status_code"] = resp.status_code
+        if resp.status_code == 204:
+            out["records_returned"] = 0
+            out["hint"] = "Module found but it has no records."
+        else:
+            data = resp.json().get("data", [])
+            out["records_returned"] = len(data)
+            if data:
+                first = data[0]
+                out["first_record_fields"] = sorted(first.keys())
+                out["first_record_published"] = _is_published(first)
+                out["published_count"] = sum(1 for r in data if _is_published(r))
+                if not out["first_record_published"]:
+                    out["hint"] = ("Records exist but none are published. Tick "
+                                   "'Publish to Web' and make sure Status is not "
+                                   "Sold / Off Market.")
+            else:
+                out["hint"] = "Module found but returned no records."
+    except Exception as e:
+        out["error"] = f"{type(e).__name__}: {e}"
+    return out

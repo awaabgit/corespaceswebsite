@@ -8,7 +8,40 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" href="/static/core-spaces-logo.jpg">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0A463A">
+
+  {# ---- SEO / social sharing ---- #}
+  <link rel="canonical" href="{{ canonical_url(request) }}">
+  <meta name="robots" content="index, follow">
+  <meta property="og:site_name" content="{{ company.name }}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+  <meta property="og:description" content="{{ self.meta_description() }}">
+  <meta property="og:url" content="{{ canonical_url(request) }}">
+  <meta property="og:image" content="{% block og_image %}{{ base_url(request) }}/static/hero/hero1.jpg{% endblock %}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ self.title() }}">
+  <meta name="twitter:description" content="{{ self.meta_description() }}">
+  <meta name="twitter:image" content="{{ self.og_image() }}">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    "name": "{{ company.name }}",
+    "description": "{{ company.tagline }}",
+    "url": "{{ base_url(request) }}",
+    "telephone": "{{ company.phone }}",
+    "email": "{{ company.email }}",
+    "address": {"@type": "PostalAddress", "addressLocality": "Dubai", "addressCountry": "AE"},
+    "areaServed": "Dubai, United Arab Emirates"
+  }
+  </script>
+
   <link rel="stylesheet" href="/static/css/styles.css">
   {% block head_extra %}{% endblock %}
 </head>

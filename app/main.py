@@ -39,6 +39,32 @@ def _fmt_price(value: float, currency: str = "AED", listing_type: str = "sale") 
     return f"{currency} {n}{suffix}"
 
 
+
+
+def _base_url(request) -> str:
+    """Public base URL, honouring the proxy headers Render sets."""
+    fwd_proto = request.headers.get("x-forwarded-proto")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if host:
+        return f"{fwd_proto or request.url.scheme}://{host}".rstrip("/")
+    return str(request.base_url).rstrip("/")
+
+
+def _canonical_url(request) -> str:
+    return f"{_base_url(request)}{request.url.path}"
+
+
+def _fmt_area(value) -> str:
+    """1340.0 -> '1,340'   |   695.56 -> '695.56'  (no ugly trailing .0)"""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return "0"
+    if abs(v - round(v)) < 0.005:
+        return f"{int(round(v)):,}"
+    return f"{v:,.2f}".rstrip("0").rstrip(".")
+
+
 def _digits(phone: str) -> str:
     return "".join(c for c in (phone or "") if c.isdigit())
 
@@ -60,6 +86,9 @@ templates.env.globals.update(
         "address": config.COMPANY_ADDRESS,
     },
     fmt_price=_fmt_price,
+    fmt_area=_fmt_area,
+    base_url=_base_url,
+    canonical_url=_canonical_url,
     wa_link=_wa_link,
     mode=config.mode,
 )
@@ -74,13 +103,19 @@ def home(request: Request):
 
 @app.get("/listings", response_class=HTMLResponse)
 def listings(request: Request, type: str | None = None, q: str | None = None,
-             beds: int | None = None, max_price: int | None = None):
-    rows = data.get_listings(listing_type=type, search=q, beds=beds, max_price=max_price)
+             beds: int | None = None, max_price: int | None = None,
+             baths: int | None = None, min_sqft: int | None = None,
+             min_price: int | None = None, status: str | None = None):
+    rows = data.get_listings(listing_type=type, search=q, beds=beds,
+                             max_price=max_price, baths=baths, min_sqft=min_sqft,
+                             min_price=min_price, status=status)
     return templates.TemplateResponse(
         request,
         "listings.html",
         {"listings": rows, "active_type": type or "all", "q": q or "",
-         "beds": beds or "", "max_price": max_price or ""},
+         "beds": beds or "", "max_price": max_price or "",
+         "baths": baths or "", "min_sqft": min_sqft or "",
+         "min_price": min_price or "", "status": status or ""},
     )
 
 
@@ -158,6 +193,51 @@ def property_image(record_id: str, file_id: str):
     body, ctype = hit
     return Response(content=body, media_type=ctype,
                     headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/debug/zoho")
+def debug_zoho():
+    """Diagnostic: shows exactly what the Zoho link is doing. Safe to leave on."""
+    if not config.zoho_enabled():
+        return JSONResponse({"zoho_enabled": False,
+                             "mode": config.mode(),
+                             "hint": "No Zoho keys set in the environment."})
+    from . import zoho
+    return JSONResponse(zoho.diagnose())
+
+
+@app.get("/robots.txt")
+def robots(request: Request):
+    body = f"User-agent: *\nAllow: /\nSitemap: {_base_url(request)}/sitemap.xml\n"
+    return Response(content=body, media_type="text/plain")
+
+
+@app.get("/site.webmanifest")
+def webmanifest():
+    return JSONResponse({
+        "name": config.COMPANY_NAME,
+        "short_name": config.COMPANY_NAME,
+        "icons": [{"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png"}],
+        "theme_color": "#0A463A",
+        "background_color": "#ffffff",
+        "display": "standalone",
+    })
+
+
+@app.get("/sitemap.xml")
+def sitemap(request: Request):
+    base = _base_url(request)
+    urls = [f"{base}/", f"{base}/listings", f"{base}/about", f"{base}/contact"]
+    try:
+        for row in data.get_listings():
+            urls.append(f"{base}/listings/{row['slug']}")
+    except Exception:
+        pass
+    items = "".join(f"<url><loc>{u}</loc></url>" for u in urls)
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>'
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+           f"{items}</urlset>")
+    return Response(content=xml, media_type="application/xml")
 
 
 @app.get("/health")

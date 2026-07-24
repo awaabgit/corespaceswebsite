@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_icons.html" import bed, bath, area, phone, whatsapp, pin, check %}
+{% from "_icons.html" import bed, bath, area, phone, whatsapp, pin, check, share %}
 {% block title %}{{ listing.title }} — {{ company.name }}{% endblock %}
 {% block meta_description %}{{ listing.title }} in {{ listing.location }}. {{ fmt_price(listing.price, listing.currency, listing.type) }}.{% endblock %}
 
@@ -46,7 +46,7 @@
       <ul class="spec-row">
         <li>{{ bed() }} <strong>{{ listing.beds }}</strong> bedrooms</li>
         <li>{{ bath() }} <strong>{{ listing.baths }}</strong> bathrooms</li>
-        <li>{{ area() }} <strong>{{ "{:,}".format(listing.area_sqft) }}</strong> sqft</li>
+        <li>{{ area() }} <strong>{{ fmt_area(listing.area_sqft) }}</strong> sqft</li>
         <li><span class="status-dot"></span> <strong>{{ listing.status|capitalize }}</strong></li>
       </ul>
 
@@ -63,6 +63,14 @@
         </ul>
       </div>
       {% endif %}
+
+      <div class="share-row">
+        <button class="share-btn" type="button" data-share
+                data-title="{{ listing.title }}"
+                data-text="{{ listing.title }} — {{ fmt_price(listing.price, listing.currency, listing.type) }}">
+          {{ share() }} Share this property
+        </button>
+      </div>
 
       <div class="mapblock">
         <h2>Location</h2>

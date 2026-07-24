@@ -21,11 +21,41 @@
       </select>
     </span>
     <span class="pill-sel">
+      <select name="baths">
+        <option value="">Baths</option>
+        {% for b in [1,2,3,4,5] %}<option value="{{ b }}" {{ 'selected' if baths == b }}>{{ b }}+ baths</option>{% endfor %}
+      </select>
+    </span>
+    <span class="pill-sel">
+      <select name="min_sqft">
+        <option value="">Size</option>
+        {% for a in [500,750,1000,1500,2000,3000,5000] %}
+          <option value="{{ a }}" {{ 'selected' if min_sqft == a }}>{{ "{:,}".format(a) }}+ sqft</option>
+        {% endfor %}
+      </select>
+    </span>
+    <span class="pill-sel">
+      <select name="min_price">
+        <option value="">Min price</option>
+        {% for p in [500000,1000000,2000000,5000000] %}
+          <option value="{{ p }}" {{ 'selected' if min_price == p }}>from {{ "{:,}".format(p) }}</option>
+        {% endfor %}
+      </select>
+    </span>
+    <span class="pill-sel">
       <select name="max_price">
         <option value="">Max price</option>
-        {% for p in [100000,500000,1000000,3000000,5000000,10000000] %}
+        {% for p in [500000,1000000,2000000,3000000,5000000,10000000,20000000] %}
           <option value="{{ p }}" {{ 'selected' if max_price == p }}>up to {{ "{:,}".format(p) }}</option>
         {% endfor %}
+      </select>
+    </span>
+    <span class="pill-sel">
+      <select name="status">
+        <option value="">Any status</option>
+        <option value="ready" {{ 'selected' if status == 'ready' }}>Ready</option>
+        <option value="offplan" {{ 'selected' if status == 'offplan' }}>Off Plan</option>
+        <option value="available" {{ 'selected' if status == 'available' }}>Available</option>
       </select>
     </span>
     <button class="pill-go" type="submit">Search</button>

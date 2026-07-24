@@ -14,6 +14,8 @@ from .mock_data import MOCK_LISTINGS
 def get_listings(
     *, listing_type: str | None = None, search: str | None = None,
     beds: int | None = None, max_price: int | None = None,
+    baths: int | None = None, min_sqft: int | None = None,
+    min_price: int | None = None, status: str | None = None,
 ) -> list[dict[str, Any]]:
     rows = _all_listings()
 
@@ -23,8 +25,27 @@ def get_listings(
     if beds:
         rows = [r for r in rows if int(r.get("beds", 0)) >= beds]
 
+    if baths:
+        rows = [r for r in rows if int(r.get("baths", 0) or 0) >= baths]
+
+    if min_sqft:
+        rows = [r for r in rows if float(r.get("area_sqft", 0) or 0) >= min_sqft]
+
+    if min_price:
+        rows = [r for r in rows if r.get("price") and r["price"] >= min_price]
+
     if max_price:
         rows = [r for r in rows if r.get("price") and r["price"] <= max_price]
+
+    if status:
+        st = status.lower()
+        if st == "ready":
+            rows = [r for r in rows if "ready" in str(r.get("status", "")).lower()]
+        elif st == "offplan":
+            rows = [r for r in rows if "off plan" in str(r.get("status", "")).lower()]
+        elif st == "available":
+            rows = [r for r in rows
+                    if "available" in str(r.get("status", "")).lower()]
 
     if search:
         q = search.lower().strip()
