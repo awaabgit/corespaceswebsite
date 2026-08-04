@@ -282,40 +282,217 @@ def _is_published(rec: dict[str, Any]) -> bool:
     return True
 
 
+_USERS_CACHE: dict[str, Any] = {"by_id": None, "at": 0.0}
+
+
+def fetch_users() -> dict[str, dict[str, str]]:
+    """
+    Every active Zoho user, keyed by user id: {id: {name, email, phone}}.
+
+    Agents already have a Phone on their Zoho user record (Setup → Users), so
+    that's where the site gets the number to show for a listing — no second list
+    to maintain, and updating a number in Zoho updates the website.
+
+    Cached for an hour; failures return {} so a hiccup never breaks a page.
+    """
+    now = time.time()
+    if _USERS_CACHE["by_id"] is not None and now - _USERS_CACHE["at"] < 3600:
+        return _USERS_CACHE["by_id"]
+
+    out: dict[str, dict[str, str]] = {}
+    try:
+        url = f"{config.ZOHO_API_HOST}/crm/v2/users"
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(url, headers=_headers(), params={"type": "ActiveUsers"})
+            resp.raise_for_status()
+            for u in resp.json().get("users", []):
+                uid = str(u.get("id") or "")
+                if not uid:
+                    continue
+                full = str(u.get("full_name") or "").strip()
+                if not full:
+                    full = " ".join(
+                        p for p in (u.get("first_name"), u.get("last_name")) if p
+                    ).strip()
+                out[uid] = {
+                    "name": full,
+                    "email": str(u.get("email") or ""),
+                    # mobile is the better number to give a buyer when both exist
+                    "phone": str(u.get("mobile") or u.get("phone") or "").strip(),
+                }
+    except Exception as exc:
+        print(f"[zoho] could not load users, agent numbers fall back to config: {exc}")
+        return _USERS_CACHE["by_id"] or {}
+
+    _USERS_CACHE.update({"by_id": out, "at": now})
+    return out
+
+
+def _owner(rec: dict[str, Any]) -> tuple[str, str, str]:
+    """
+    (id, name, email) of the Zoho user who owns the record — i.e. the agent who
+    posted the listing. Zoho sets this automatically on every record, which is
+    why it's a reliable way to route enquiries without extra data entry.
+    """
+    raw = rec.get("Owner") or rec.get("owner") or {}
+    if isinstance(raw, dict):
+        return (str(raw.get("id") or ""),
+                str(raw.get("name") or raw.get("full_name") or ""),
+                str(raw.get("email") or ""))
+    return "", str(raw or ""), ""
+
+
+def _is_company_name(name: str) -> bool:
+    """
+    True when a 'person' name is really just the company name.
+
+    The CRM's owner account is named after the company rather than the person,
+    so listings it owns would otherwise show the agent as "Corespaces". Showing
+    the company name where a human name belongs looks broken, so we drop it and
+    let the page fall back to the main company contact instead.
+    """
+    def norm(s: str) -> str:
+        return "".join(ch for ch in str(s or "").lower() if ch.isalnum())
+    n = norm(name)
+    return bool(n) and n == norm(config.COMPANY_NAME)
+
+
 def _split_agent(rec: dict[str, Any]) -> tuple[str, str]:
     """
-    'Agent Contact' holds name + phone in one field, e.g. "Sara - +971 50 123 4567".
-    Split it into (name, phone). Falls back to the older separate fields.
-    """
-    name = _pick(rec, "Agent_Name", "Agent_line", default="")
-    phone = _pick(rec, "Agent_Phone", default="")
-    if name or phone:
-        return str(name), str(phone)
+    Work out which agent a buyer should be put through to, in priority order:
 
-    raw = str(_pick(rec, "Agent_Contact", "Agent_contact", default="") or "").strip()
+      1. Agent_Name / Agent_Phone typed on the record
+      2. 'Agent Contact' — one field holding both, e.g. "Sara - +971 50 123 4567"
+      3. the record's Zoho Owner — name and phone read from that user's Zoho
+         profile (Setup -> Users). This is the normal path and needs no data
+         entry beyond filling in each agent's Phone once.
+      4. the AGENTS env directory, for any agent with no phone set in Zoho
+      5. nothing here; the templates fall back to the main company number
+
+    Returns (name, phone); either may be "".
+    """
+    name = str(_pick(rec, "Agent_Name", "Agent_line", default="") or "")
+    phone = str(_pick(rec, "Agent_Phone", "Agent_Mobile", default="") or "")
+
+    if not (name and phone):
+        raw = str(_pick(rec, "Agent_Contact", "Agent_contact", default="") or "").strip()
+        if raw:
+            # phone = the run of digits/+/spaces at the end
+            m = re.search(r"[+\d][\d\s\-()]{6,}$", raw)
+            if m:
+                phone = phone or m.group(0).strip()
+                name = name or raw[: m.start()].strip(" -–—|,")
+            else:
+                name = name or raw
+
+    owner_id, owner_name, owner_email = _owner(rec)
+
+    profile = fetch_users().get(owner_id, {}) if owner_id else {}
+    if not name:
+        name = profile.get("name") or owner_name
+    if not phone:
+        phone = profile.get("phone") or ""
+
+    if not phone:
+        phone = config.lookup_agent_phone(
+            name, owner_name, owner_email, profile.get("email", "")
+        )
+
+    if _is_company_name(name):
+        name = ""
+
+    return name, _tidy_phone(phone)
+
+
+def _tidy_phone(phone: str) -> str:
+    """
+    '971-563138010' -> '+971 56 313 8010'.
+
+    Numbers get typed into Zoho every which way. Normalising here means the
+    tel: and WhatsApp links work regardless of how the agent entered it.
+    """
+    raw = str(phone or "").strip()
     if not raw:
-        return "", ""
-    # phone = the longest run of digits/+/spaces at the end
-    m = re.search(r"[+\d][\d\s\-()]{6,}$", raw)
-    if m:
-        phone = m.group(0).strip()
-        name = raw[: m.start()].strip(" -–—|,")
-        return name, phone
-    return raw, ""
+        return ""
+    digits = "".join(c for c in raw if c.isdigit())
+    if not digits:
+        return raw
+    if raw.startswith("00"):
+        digits = digits[2:]
+    # UAE mobile: 971 + 9 digits, or a local 05x number
+    if digits.startswith("971") and len(digits) == 12:
+        return f"+971 {digits[3:5]} {digits[5:8]} {digits[8:]}"
+    if digits.startswith("0") and len(digits) == 10:
+        return f"+971 {digits[1:3]} {digits[3:6]} {digits[6:]}"
+    return raw if raw.startswith("+") else f"+{digits}"
+
+
+# Word-boundary matching, so "Current" isn't read as rent and "completed" isn't
+# read as "let". Plain substring matching got this wrong.
+_RENT_WORDS = re.compile(
+    r"\b(rent|rents|rental|rentals|renting|lease|leases|leased|leasing|"
+    r"let|lets|letting|tolet|tenancy|tenant)\b"
+)
+_SALE_WORDS = re.compile(
+    r"\b(sale|sales|sell|selling|sold|buy|buying|purchase|resale|freehold)\b"
+)
+
+# Fields that might carry the sale/rent decision, best first. Zoho generates API
+# names from labels, so the same concept shows up under many spellings.
+_TYPE_FIELDS = (
+    "Listing_Type", "Listing_Type1", "Listing_Type2", "listing_type",
+    "Offering_Type", "Offer_Type", "Transaction_Type", "Purpose",
+    "Property_For", "For_Sale_or_Rent", "Sale_or_Rent", "Rent_or_Sale",
+    "Category", "Type",
+)
+
+
+def _type_from_text(text: Any) -> str | None:
+    """'For Rent - Available' -> 'rent'. Returns None when the text says neither."""
+    s = str(text or "").lower()
+    if not s:
+        return None
+    if _RENT_WORDS.search(s):
+        return "rent"
+    if _SALE_WORDS.search(s):
+        return "sale"
+    return None
 
 
 def _listing_type(rec: dict[str, Any]) -> str:
     """
-    Buy vs Rent. The module no longer has a Listing Type field, so we read it from
-    Status (e.g. "For Rent - Available"). Anything not mentioning rent = sale.
+    Buy vs Rent.
+
+    Rent listings were showing the "For sale" tag: the old version read one field,
+    matched on bare substrings, and fell back to "sale" whenever it was unsure —
+    so any status that didn't literally contain "rent" (e.g. "Available",
+    "Ready") silently became a sale.
+
+    Now we check every plausible field name, then Status, then the title, using
+    whole-word matching. A Zoho picklist can also come back as a dict or list.
     """
-    explicit = str(_pick(rec, "Listing_Type", "Listing_Type1", "listing_type", default="") or "").lower()
-    if "rent" in explicit:
-        return "rent"
-    if "sale" in explicit:
-        return "sale"
-    status = str(_pick(rec, "Status", default="") or "").lower()
-    return "rent" if "rent" in status or "let" in status else "sale"
+    for field in _TYPE_FIELDS:
+        got = _type_from_text(_flatten_picklist(_pick(rec, field, default="")))
+        if got:
+            return got
+
+    for fallback in ("Status", "Availability", "Name", "Title", "Description"):
+        got = _type_from_text(_flatten_picklist(_pick(rec, fallback, default="")))
+        if got:
+            return got
+
+    # Genuinely no signal anywhere — sale is the safer default for a brokerage,
+    # but /debug/zoho reports these so they can be fixed at the source.
+    return "sale"
+
+
+def _flatten_picklist(value: Any) -> str:
+    """Zoho picklists arrive as a string, a {'name': ...} dict, or a list of either."""
+    if isinstance(value, dict):
+        return str(value.get("name") or value.get("display_value") or value.get("id") or "")
+    if isinstance(value, (list, tuple)):
+        return " ".join(_flatten_picklist(v) for v in value)
+    return str(value or "")
 
 
 def _normalise(rec: dict[str, Any]) -> dict[str, Any]:
@@ -342,13 +519,21 @@ def _normalise(rec: dict[str, Any]) -> dict[str, Any]:
         "amenities": _amenities(rec),
         "agent_name": agent_name,
         "agent_phone": agent_phone,
+        "agent_email": _owner(rec)[2],
+        # so an enquiry about this property is assigned to the agent who posted it
+        "_zoho_owner_id": _owner(rec)[0],
         "_zoho_id": str(rec.get("id")),
     }
 
 
 def fetch_attachment_ids(record_id: str) -> list[str]:
-    """Return attachment IDs for a Properties record (used by the image re-host step)."""
-    url = f"{config.ZOHO_API_HOST}/crm/v2/{config.ZOHO_PROPERTIES_MODULE}/{record_id}/Attachments"
+    """
+    Return attachment IDs for a Properties record (used by the image re-host step).
+
+    Uses resolve_module() like everything else — the configured name is only a
+    hint, and a module renamed in Zoho keeps a different API name underneath.
+    """
+    url = f"{config.ZOHO_API_HOST}/crm/v2/{resolve_module()}/{record_id}/Attachments"
     with httpx.Client(timeout=60) as client:
         resp = client.get(url, headers=_headers())
         if resp.status_code == 204:
@@ -359,7 +544,7 @@ def fetch_attachment_ids(record_id: str) -> list[str]:
 
 def download_attachment(record_id: str, attachment_id: str) -> bytes:
     url = (
-        f"{config.ZOHO_API_HOST}/crm/v2/{config.ZOHO_PROPERTIES_MODULE}"
+        f"{config.ZOHO_API_HOST}/crm/v2/{resolve_module()}"
         f"/{record_id}/Attachments/{attachment_id}"
     )
     with httpx.Client(timeout=120) as client:
@@ -368,26 +553,32 @@ def download_attachment(record_id: str, attachment_id: str) -> bytes:
         return resp.content
 
 
-def create_lead(name: str, email: str, phone: str, message: str, listing_title: str = "") -> dict[str, Any]:
-    """Create a Lead in Zoho from a website inquiry."""
+def create_lead(name: str, email: str, phone: str, message: str,
+                listing_title: str = "", owner_id: str = "") -> dict[str, Any]:
+    """
+    Create a Lead in Zoho from a website inquiry.
+
+    When the enquiry is about a specific property, `owner_id` is the Zoho user who
+    posted that listing — we assign the Lead to them so it lands in the right
+    agent's queue instead of sitting unassigned. If Zoho rejects the assignment
+    (user deactivated, id stale), we retry unassigned rather than lose the lead.
+    """
     url = f"{config.ZOHO_API_HOST}/crm/v2/Leads"
-    last_name = name.strip() or "Website Lead"
-    description = message
-    if listing_title:
-        description = f"[Re: {listing_title}]\n\n{message}"
-    body = {
-        "data": [
-            {
-                "Last_Name": last_name,
-                "Email": email,
-                "Phone": phone,
-                "Lead_Source": "Website",
-                "Description": description,
-            }
-        ]
+    record: dict[str, Any] = {
+        "Last_Name": name.strip() or "Website Lead",
+        "Email": email,
+        "Phone": phone,
+        "Lead_Source": "Website",
+        "Description": f"[Re: {listing_title}]\n\n{message}" if listing_title else message,
     }
+    if owner_id:
+        record["Owner"] = {"id": owner_id}
+
     with httpx.Client(timeout=30) as client:
-        resp = client.post(url, headers=_headers(), json=body)
+        resp = client.post(url, headers=_headers(), json={"data": [record]})
+        if owner_id and resp.status_code >= 400:
+            record.pop("Owner", None)
+            resp = client.post(url, headers=_headers(), json={"data": [record]})
         resp.raise_for_status()
         return resp.json()
 
@@ -456,6 +647,30 @@ def diagnose() -> dict[str, Any]:
                     out["hint"] = ("Records exist but none are published. Tick "
                                    "'Publish to Web' and make sure Status is not "
                                    "Sold / Off Market.")
+
+                # Why did each record come out as Buy or Rent? Shows the raw
+                # values behind the decision so a mis-tagged listing is
+                # traceable to the exact Zoho field.
+                out["sale_rent_check"] = [
+                    {
+                        "title": _pick(r, "Name", "Title", default="?"),
+                        "decided": _listing_type(r),
+                        "status_field": _flatten_picklist(_pick(r, "Status", default="")),
+                        "type_fields": {
+                            f: _flatten_picklist(r[f])
+                            for f in _TYPE_FIELDS if f in r and r[f] not in (None, "", [])
+                        },
+                        "owner": _owner(r)[1],
+                        "agent_shown": _split_agent(r),
+                    }
+                    for r in data[:5]
+                ]
+                out["zoho_users"] = [
+                    {"name": u["name"], "email": u["email"],
+                     "phone_on_file": u["phone"] or "— MISSING, add it in Setup → Users"}
+                    for u in fetch_users().values()
+                ]
+                out["agent_directory_loaded"] = sorted(config.agent_directory().keys())
             else:
                 out["hint"] = "Module found but returned no records."
     except Exception as e:

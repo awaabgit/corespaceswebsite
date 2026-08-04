@@ -27,17 +27,32 @@ def _get_client():
     return _client
 
 
+# Statuses that mean "don't show this on the website". Everything else is shown.
+#
+# This used to be an exact `status == "available"` match, which was wrong: the
+# sync writes Zoho's own wording through, so real rows arrive as "ready",
+# "off plan", "for rent - available" and so on. An exact match would have hidden
+# almost every listing the moment we switched to Supabase mode. Excluding the
+# handful of dead states is both correct and safe against new status wording.
+_HIDDEN_STATUS_WORDS = ("sold", "off market", "off-market", "let agreed",
+                        "under offer", "withdrawn", "archived")
+
+
+def _is_visible(row: dict[str, Any]) -> bool:
+    status = str(row.get("status") or "").lower()
+    return not any(word in status for word in _HIDDEN_STATUS_WORDS)
+
+
 def get_listings() -> list[dict[str, Any]]:
     res = (
         _get_client()
         .table("listings")
         .select("*")
-        .eq("status", "available")
         .order("featured", desc=True)
         .order("created_at", desc=True)
         .execute()
     )
-    return res.data or []
+    return [r for r in (res.data or []) if _is_visible(r)]
 
 
 def get_listing(slug: str) -> dict[str, Any] | None:

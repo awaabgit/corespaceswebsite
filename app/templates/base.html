@@ -52,7 +52,11 @@
         <img class="brand-logo" src="/static/core-spaces-logo.jpg" alt="{{ company.name }} logo">
         <span class="brand-name">{{ company.name }}</span>
       </a>
-      <nav class="site-nav" aria-label="Primary">
+      <button class="nav-toggle" id="navToggle" type="button"
+              aria-label="Menu" aria-expanded="false" aria-controls="siteNav">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="site-nav" id="siteNav" aria-label="Primary">
         <a href="/listings?type=sale">Buy</a>
         <a href="/listings?type=rent">Rent</a>
         <a href="/about">About</a>

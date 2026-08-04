@@ -19,17 +19,21 @@
   <div class="hero-inner">
     <h1 class="hero-anim">Find your next home in Dubai</h1>
     <p class="hero-sub hero-anim">A hand-picked portfolio to buy and rent — brokered by people who pick up the phone.</p>
-    <div class="searchcard hero-anim">
+    {# The Buy/Rent tabs are part of the search form, not links away from it —
+       clicking one sets the hidden `type` field so the search box keeps its text.
+       Without JS they still work as plain links (progressive enhancement). #}
+    <form class="searchcard hero-anim" action="/listings" method="get" role="search">
+      <input type="hidden" name="type" id="searchType" value="sale">
       <div class="search-tabs" id="searchTabs">
         <span class="tab-slider"></span>
-        <a href="/listings?type=rent" class="on" data-tab="0">Rent</a>
-        <a href="/listings?type=sale" data-tab="1">Buy</a>
+        <a href="/listings?type=sale" class="on" data-type="sale">Buy</a>
+        <a href="/listings?type=rent" data-type="rent">Rent</a>
       </div>
-      <form class="search-main" action="/listings" method="get" role="search">
+      <div class="search-main">
         <input type="text" name="q" placeholder="City, community or building" aria-label="Search">
         <button type="submit">Search</button>
-      </form>
-    </div>
+      </div>
+    </form>
   </div>
 </section>
 

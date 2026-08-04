@@ -42,7 +42,12 @@ def run() -> None:
 
     rows = []
     for listing in listings:
-        zoho_id = listing.pop("_zoho_id", None)
+        zoho_id = listing.get("_zoho_id")
+        owner_id = listing.get("_zoho_owner_id", "")
+        # Keys starting with "_" are internal to the app and have no column in
+        # Supabase — sending them would make the upsert fail on an unknown column.
+        listing = {k: v for k, v in listing.items() if not k.startswith("_")}
+        listing["zoho_owner_id"] = owner_id
         image_urls = []
 
         # Only fetch/re-host attachments if the record didn't already carry URLs.

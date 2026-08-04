@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 .env
+
+# stray nested clones — not part of this project
+/core-spaces/
+/corespaces/

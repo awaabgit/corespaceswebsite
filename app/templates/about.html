@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}About — {{ company.name }}{% endblock %}
+{% block meta_description %}{{ company.name }} was founded by Najam, a Dubai property broker who wanted to build the kind of agency he'd have wanted to work with.{% endblock %}
 
 {% block content %}
 <section class="container section narrow">
@@ -7,13 +8,45 @@
   <h1>{{ company.name }}</h1>
   <div class="prose">
     <p class="lead">{{ company.tagline }}</p>
+
     <p>
-      We're a Dubai property team focused on a simple idea: fewer listings, better matched,
-      with people who actually answer the phone. We work across sales and lettings in the
-      communities we know best, and we'd rather tell you a place isn't right than push it.
+      {{ company.name }} started with a broker who kept running into the same thing.
+    </p>
+
+    <p>
+      Najam spent years selling and letting property across Dubai, and he was good at it —
+      the kind of good where the phone rings on its own and the referrals never stop. But
+      the longer he did it, the more one thing bothered him. The market rewarded volume.
+      List everything, chase everyone, close whatever closes. Clients were handed between
+      people who'd never seen the building. Buyers were pushed at whatever needed moving
+      that month. Good agents burned out; good clients felt like a number.
+    </p>
+
+    <p>
+      He founded {{ company.name }} to work the other way round. Fewer properties, properly
+      known. One agent who stays with you from the first viewing to the handover — the same
+      person, every time, who has actually stood in the unit and can tell you what the light
+      is like at 4pm and what the service charge really covers.
+    </p>
+
+    <h2>How we work</h2>
+    <p>
+      We'd rather tell you a place isn't right than push it. If a building has a problem, we
+      say so. If your budget doesn't match the community you've set your heart on, we'll tell
+      you that too — and then show you the three areas where it does.
     </p>
     <p>
-      <em>Placeholder copy — swap this for the real company story in the FINISH phase.</em>
+      Every listing on this site is verified by the agent handling it, and every property page
+      carries that agent's direct number. Call it. You'll get the person who knows the answer,
+      not a switchboard.
+    </p>
+
+    <h2>What we cover</h2>
+    <p>
+      Sales and lettings across Dubai — Marina, Downtown, Palm Jumeirah, Business Bay,
+      Arabian Ranches, JVC and the communities around them. Ready and off-plan. If you're
+      selling or letting, we'll give you a valuation we can actually defend and a plan to
+      move it.
     </p>
   </div>
   <a class="btn" href="/contact">Get in touch</a>

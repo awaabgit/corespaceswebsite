@@ -13,10 +13,13 @@ services:
         value: "CORE Spaces"
       - key: COMPANY_TAGLINE
         value: "Dubai property, brokered properly."
+      # Main contact — used in the footer, on the contact page, and for any
+      # listing whose agent has no number of their own. Currently Najam's
+      # direct line; swap for an office number / info@ address when there is one.
       - key: COMPANY_PHONE
-        value: "+971 4 000 0000"
+        value: "+971 56 313 8010"
       - key: COMPANY_EMAIL
-        value: "hello@corespaces.ae"
+        value: "najam@corespaces.info"
       - key: COMPANY_ADDRESS
         value: "Business Bay, Dubai, UAE"
       # Zoho — leave blank until OAuth done; set these as SECRETS in the Render
@@ -30,6 +33,17 @@ services:
         sync: false
       - key: ZOHO_PROPERTIES_MODULE
         value: "Properties"
+      # Agent numbers normally come from each user's Phone in Zoho
+      # (Setup → Users). This is only a fallback for an agent with no number
+      # there. Format: "Name:+971...;Name:+971..." — set it as a secret in the
+      # Render dashboard so staff mobile numbers aren't committed to the repo.
+      - key: AGENTS
+        sync: false
+      # Diagnostics at /debug/zoho?key=<value>. Blank = endpoint disabled.
+      - key: DEBUG_KEY
+        sync: false
+      - key: LISTINGS_CACHE_TTL
+        value: "90"
       - key: ZOHO_ACCOUNTS_HOST
         value: "https://accounts.zoho.com"
       - key: ZOHO_API_HOST

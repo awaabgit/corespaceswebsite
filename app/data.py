@@ -5,6 +5,7 @@ or live Zoho. Swap modes by setting env vars — no code changes.
 """
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from . import config
@@ -83,10 +84,13 @@ def create_inquiry(
     """
     title = listing.get("title", "") if listing else ""
     slug = listing.get("slug", "") if listing else ""
+    # the agent who posted this listing — the lead gets assigned to them
+    owner_id = listing.get("_zoho_owner_id", "") if listing else ""
 
     if config.zoho_enabled():
         from . import zoho
-        zoho.create_lead(name, email, phone, message, listing_title=title)
+        zoho.create_lead(name, email, phone, message,
+                         listing_title=title, owner_id=owner_id)
 
     if config.supabase_enabled():
         from . import supabase_client
@@ -99,19 +103,63 @@ def create_inquiry(
         )
 
 
+# --------------------------------------------------------------------- cache
+# Without this, every single page view hit the live source — the home page, each
+# listing page and the sitemap each triggered a full paginated Zoho fetch. That
+# is slow and burns through Zoho's API rate limit.
+#
+# One fetch now serves every visitor for CACHE_TTL seconds. Just as important:
+# if the live source fails we keep serving the LAST GOOD data rather than
+# swapping in sample listings, so a brief Zoho outage can never put fake
+# properties and fake phone numbers in front of a real customer.
+_CACHE_TTL = float(config.LISTINGS_CACHE_TTL)
+_cache: dict[str, Any] = {"rows": None, "at": 0.0}
+
+
+def invalidate_cache() -> None:
+    """Force the next read to go back to the live source."""
+    _cache["rows"] = None
+    _cache["at"] = 0.0
+
+
+def _fallback(reason: str) -> list[dict[str, Any]]:
+    """
+    What to show when the live source gives us nothing and we have no cached
+    copy. Sample listings are fine for a demo but dangerous in production — they
+    carry invented agents and phone numbers — so they're opt-in.
+    """
+    if _cache["rows"]:
+        print(f"[data] {reason}; serving last known-good listings")
+        return _cache["rows"]
+    if config.SHOW_SAMPLES_ON_FAILURE:
+        print(f"[data] {reason}; falling back to sample listings")
+        return MOCK_LISTINGS
+    print(f"[data] {reason}; showing no listings (set SHOW_SAMPLES_ON_FAILURE=1 to use samples)")
+    return []
+
+
 def _all_listings() -> list[dict[str, Any]]:
     m = config.mode()
+    if m == "mock":
+        return MOCK_LISTINGS
+
+    now = time.monotonic()
+    if _cache["rows"] is not None and (now - _cache["at"]) < _CACHE_TTL:
+        return _cache["rows"]
+
     try:
         if m == "supabase":
             from . import supabase_client
-            return supabase_client.get_listings()
-        if m == "zoho-direct":
+            rows = supabase_client.get_listings()
+        else:  # zoho-direct
             from . import zoho
             rows = zoho.fetch_properties()
-            # If Zoho is reachable but nothing is published yet, show samples so
-            # the site is never blank during a demo. Real published rows win.
-            return rows if rows else MOCK_LISTINGS
     except Exception as exc:  # never let a live-source hiccup break the public site
-        print(f"[data] live source '{m}' failed, falling back to samples: {exc}")
-        return MOCK_LISTINGS
-    return MOCK_LISTINGS
+        return _fallback(f"live source '{m}' failed ({exc})")
+
+    if not rows:
+        return _fallback(f"live source '{m}' returned no published listings")
+
+    _cache["rows"] = rows
+    _cache["at"] = now
+    return rows

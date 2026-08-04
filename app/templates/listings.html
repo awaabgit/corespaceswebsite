@@ -6,13 +6,15 @@
 <section class="container section">
   <h1>Properties in Dubai</h1>
 
-  <form class="pillbar" action="/listings" method="get" role="search">
-    <div class="tabs-pill">
-      <a href="/listings" class="{{ 'on' if active_type == 'all' }}">All</a>
-      <a href="/listings?type=sale" class="{{ 'on' if active_type == 'sale' }}">Buy</a>
-      <a href="/listings?type=rent" class="{{ 'on' if active_type == 'rent' }}">Rent</a>
+  <form class="pillbar" action="/listings" method="get" role="search" id="filterForm">
+    {# Tabs submit the form with the new type so the other filters survive the
+       click. They stay real links for no-JS / middle-click. #}
+    <div class="tabs-pill" id="typeTabs">
+      <a href="/listings" data-type="" class="{{ 'on' if active_type == 'all' }}">All</a>
+      <a href="/listings?type=sale" data-type="sale" class="{{ 'on' if active_type == 'sale' }}">Buy</a>
+      <a href="/listings?type=rent" data-type="rent" class="{{ 'on' if active_type == 'rent' }}">Rent</a>
     </div>
-    {% if active_type != 'all' %}<input type="hidden" name="type" value="{{ active_type }}">{% endif %}
+    <input type="hidden" name="type" id="typeField" value="{{ '' if active_type == 'all' else active_type }}">
     <input class="pill-input" type="text" name="q" value="{{ q }}" placeholder="City, community or building">
     <span class="pill-sel">
       <select name="beds">

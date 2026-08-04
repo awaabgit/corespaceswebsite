@@ -14,6 +14,7 @@ Run:  uvicorn app.main:app --reload
 """
 from __future__ import annotations
 
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -169,6 +170,33 @@ def contact(request: Request, sent: int = 0):
     )
 
 
+# ------------------------------------------------------------ form protection
+# These forms write straight into the CRM, so an unprotected one fills it with
+# junk. Two cheap defences that don't bother real visitors with a captcha:
+#   1. a honeypot field a human never sees and never fills in
+#   2. a per-IP rate limit
+_SUBMITS: dict[str, list[float]] = {}
+_RATE_MAX = 5           # submissions ...
+_RATE_WINDOW = 600.0    # ... per IP per 10 minutes
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_limited(ip: str) -> bool:
+    import time
+    now = time.monotonic()
+    recent = [t for t in _SUBMITS.get(ip, []) if now - t < _RATE_WINDOW]
+    if len(_SUBMITS) > 5000:      # crude cap so this can't grow forever
+        _SUBMITS.clear()
+    _SUBMITS[ip] = recent + [now]
+    return len(recent) >= _RATE_MAX
+
+
 @app.post("/inquire")
 def inquire(
     request: Request,
@@ -177,12 +205,21 @@ def inquire(
     phone: str = Form(""),
     message: str = Form(...),
     slug: str = Form(""),
+    website: str = Form(""),   # honeypot — hidden from humans, bots fill it in
 ):
-    listing = data.get_listing(slug) if slug else None
-    try:
-        data.create_inquiry(name, email, phone, message, listing=listing)
-    except Exception as exc:  # never 500 a contact form at the visitor
-        print(f"[inquire] delivery failed: {exc}")
+    # Bots get the same success page as everyone else; nothing is delivered.
+    # Telling them they were caught just teaches them to try again.
+    if website.strip():
+        print(f"[inquire] honeypot triggered from {_client_ip(request)} — dropped")
+    elif _rate_limited(_client_ip(request)):
+        print(f"[inquire] rate limit hit for {_client_ip(request)} — dropped")
+    else:
+        listing = data.get_listing(slug) if slug else None
+        try:
+            data.create_inquiry(name, email, phone, message, listing=listing)
+        except Exception as exc:  # never 500 a contact form at the visitor
+            print(f"[inquire] delivery failed: {exc}")
+
     # back to where they came from with a success flag
     target = f"/listings/{slug}?sent=1" if slug else "/contact?sent=1"
     return RedirectResponse(target, status_code=303)
@@ -222,8 +259,20 @@ def property_image(record_id: str, file_id: str):
 
 
 @app.get("/debug/zoho")
-def debug_zoho():
-    """Diagnostic: shows exactly what the Zoho link is doing. Safe to leave on."""
+def debug_zoho(key: str = ""):
+    """
+    Diagnostic: shows exactly what the Zoho link is doing — which module was
+    found, which records are published, and why each one was tagged Buy or Rent.
+
+    This exposes your CRM module and field names, so it is NOT public: set
+    DEBUG_KEY in the environment and call /debug/zoho?key=<that value>.
+    With no DEBUG_KEY set, the endpoint is off.
+    """
+    if not config.DEBUG_KEY:
+        return JSONResponse({"error": "Diagnostics disabled. Set DEBUG_KEY to enable."},
+                            status_code=404)
+    if not secrets.compare_digest(key, config.DEBUG_KEY):
+        return JSONResponse({"error": "Not found"}, status_code=404)
     if not config.zoho_enabled():
         return JSONResponse({"zoho_enabled": False,
                              "mode": config.mode(),

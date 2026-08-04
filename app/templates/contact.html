@@ -13,6 +13,10 @@
 
   <div class="contact-grid">
     <form action="/inquire" method="post" class="form">
+      {# honeypot: hidden from people, irresistible to bots #}
+      <div class="hp" aria-hidden="true">
+        <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
       <label>Name <input type="text" name="name" required></label>
       <label>Email <input type="email" name="email" required></label>
       <label>Phone <input type="tel" name="phone"></label>

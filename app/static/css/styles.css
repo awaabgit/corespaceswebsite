@@ -241,7 +241,6 @@ h2{font-size:clamp(1.45rem,2.6vw,2rem)}
   .pill-sel,.pill-sel select{width:100%}
   .pill-go,.search-main button{width:100%;padding:.85rem}
   .tab-slider{display:none}          /* animation needs a row, not a column */
-  .card-actions{grid-template-columns:1fr 1fr}
   .detail-price{font-size:1.5rem}
   .spec-row{flex-wrap:wrap;gap:.6rem 1.1rem}
   .gallery-thumbs{grid-template-columns:repeat(2,1fr)}
@@ -282,4 +281,36 @@ img,video{max-width:100%;height:auto}
 }
 .card-actions .btn-call, .card-actions .btn-wa{
   display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+}
+
+/* honeypot — off-screen rather than display:none, which some bots skip */
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+/* ---------------------------- mobile navigation --------------------------- */
+.nav-toggle{display:none;flex-direction:column;justify-content:center;gap:5px;
+  width:44px;height:44px;padding:0 10px;border:1px solid var(--line);border-radius:10px;
+  background:#fff;cursor:pointer}
+.nav-toggle span{display:block;height:2px;width:100%;background:var(--green);border-radius:2px;
+  transition:transform .2s ease,opacity .2s ease}
+.nav-toggle[aria-expanded="true"] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.nav-toggle[aria-expanded="true"] span:nth-child(2){opacity:0}
+.nav-toggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+@media(max-width:820px){
+  .nav-toggle{display:flex}
+  .site-nav{position:absolute;top:100%;left:0;right:0;display:none;flex-direction:column;
+    align-items:stretch;gap:0;background:#fff;border-bottom:1px solid var(--line);
+    box-shadow:0 14px 30px rgba(10,70,58,.10);padding:.5rem 24px 1rem}
+  .site-nav.open{display:flex}
+  .site-nav a{padding:.85rem 0;font-size:1rem;border-bottom:1px solid var(--line)}
+  .site-nav a:last-child{border-bottom:none}
+  .nav-cta{margin-top:.7rem;text-align:center;padding:.8rem 1.1rem}
+  .header-inner{position:relative}
+  .site-header{position:sticky}
+}
+
+/* the 640px block set grid columns on a flex container — it did nothing */
+@media(max-width:640px){
+  .card-actions{display:flex;gap:.5rem}
+  .card-actions .btn-call,.card-actions .btn-wa{flex:1 1 0;min-width:0}
 }

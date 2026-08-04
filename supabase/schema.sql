@@ -22,9 +22,17 @@ create table if not exists public.listings (
   images      jsonb not null default '[]'::jsonb, -- array of public image URLs
   agent_name  text default '',
   agent_phone text default '',
+  agent_email text default '',
+  -- Zoho user who owns the record: the agent handling this property. Enquiries
+  -- about it are assigned to them so the lead reaches the right person.
+  zoho_owner_id text default '',
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- If the table already exists from an earlier deploy, add the new columns:
+alter table public.listings add column if not exists agent_email   text default '';
+alter table public.listings add column if not exists zoho_owner_id text default '';
 
 create index if not exists listings_status_idx   on public.listings (status);
 create index if not exists listings_type_idx      on public.listings (type);
