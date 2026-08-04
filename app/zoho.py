@@ -321,8 +321,14 @@ def fetch_users() -> dict[str, dict[str, str]]:
                     "phone": str(u.get("mobile") or u.get("phone") or "").strip(),
                 }
     except Exception as exc:
-        print(f"[zoho] could not load users, agent numbers fall back to config: {exc}")
-        return _USERS_CACHE["by_id"] or {}
+        # Cache the failure too. Without this, a token lacking the users scope
+        # meant a fresh 401 for EVERY record on every page load — 13 listings
+        # was 13 failed API calls. Back off for a while and use the fallback.
+        print(f"[zoho] could not load users ({exc}); "
+              f"agent numbers fall back to the AGENTS setting. "
+              f"Add the ZohoCRM.users.READ scope to fix.")
+        _USERS_CACHE.update({"by_id": _USERS_CACHE["by_id"] or {}, "at": now})
+        return _USERS_CACHE["by_id"]
 
     _USERS_CACHE.update({"by_id": out, "at": now})
     return out
@@ -427,14 +433,32 @@ def _tidy_phone(phone: str) -> str:
     return raw if raw.startswith("+") else f"+{digits}"
 
 
-# Word-boundary matching, so "Current" isn't read as rent and "completed" isn't
-# read as "let". Plain substring matching got this wrong.
+# Two tiers, because the two kinds of field need very different rules.
+#
+# TIER 1 — dedicated fields (a "Listing Type" picklist, or Status). These are
+# terse and deliberate, so a single word is trustworthy. Word boundaries stop
+# "Current" reading as rent and "completed" as "let".
 _RENT_WORDS = re.compile(
     r"\b(rent|rents|rental|rentals|renting|lease|leases|leased|leasing|"
-    r"let|lets|letting|tolet|tenancy|tenant)\b"
+    r"letting|tolet|tenancy)\b"
 )
 _SALE_WORDS = re.compile(
     r"\b(sale|sales|sell|selling|sold|buy|buying|purchase|resale|freehold)\b"
+)
+
+# TIER 2 — free text (title, description). Agent marketing copy is a minefield:
+# an off-plan SALE listing sold itself with "Let's make your next move" and got
+# tagged rent, and "rental yield" appears constantly in sale pitches. So prose
+# only counts when it uses a phrase that can't mean anything else.
+# "Cheques" is included because quoting a price in cheques is specific to
+# annual rent in Dubai.
+_RENT_PHRASES = re.compile(
+    r"(for rent|to let|rental terms|rent terms|annual rent|yearly rent|"
+    r"rent per|per annum|\bcheques?\b|tenancy contract|rented out)"
+)
+_SALE_PHRASES = re.compile(
+    r"(for sale|payment plan|dld waiver|handover|off[- ]plan|freehold|resale|"
+    r"post[- ]handover)"
 )
 
 # Fields that might carry the sale/rent decision, best first. Zoho generates API
@@ -447,8 +471,8 @@ _TYPE_FIELDS = (
 )
 
 
-def _type_from_text(text: Any) -> str | None:
-    """'For Rent - Available' -> 'rent'. Returns None when the text says neither."""
+def _type_from_words(text: Any) -> str | None:
+    """Tier 1: 'For Rent - Available' -> 'rent'. None when it says neither."""
     s = str(text or "").lower()
     if not s:
         return None
@@ -459,30 +483,56 @@ def _type_from_text(text: Any) -> str | None:
     return None
 
 
+def _type_from_phrases(text: Any) -> str | None:
+    """Tier 2: only unambiguous phrases, for prose that can't be trusted."""
+    s = str(text or "").lower()
+    if not s:
+        return None
+    if _RENT_PHRASES.search(s):
+        return "rent"
+    if _SALE_PHRASES.search(s):
+        return "sale"
+    return None
+
+
+# kept for the diagnostics endpoint
+_type_from_text = _type_from_words
+
+
 def _listing_type(rec: dict[str, Any]) -> str:
     """
     Buy vs Rent.
 
-    Rent listings were showing the "For sale" tag: the old version read one field,
-    matched on bare substrings, and fell back to "sale" whenever it was unsure —
-    so any status that didn't literally contain "rent" (e.g. "Available",
-    "Ready") silently became a sale.
+    NOTE: this module currently has NO listing-type field — Status only ever
+    holds "Available Ready" or "Available - Off Plan", neither of which says
+    sale or rent. Everything below is inference, and inference has limits. The
+    real fix is a "Listing Type" picklist in Zoho with values sale / rent; add
+    it and step 1 takes over and all of this guesswork stops mattering.
 
-    Now we check every plausible field name, then Status, then the title, using
-    whole-word matching. A Zoho picklist can also come back as a dict or list.
+    Until then, in order:
+      1. a dedicated type field, if one ever appears — single words trusted
+      2. Status — single words, then phrases, so "Off Plan" reads as a sale
+         (you cannot rent a property that hasn't been built)
+      3. title and description — strict phrases only. Loose matching here read
+         "Let's make your next move" as a letting and mis-tagged a sale.
+
+    Falls back to sale, which is right for the large majority of the portfolio.
     """
     for field in _TYPE_FIELDS:
-        got = _type_from_text(_flatten_picklist(_pick(rec, field, default="")))
+        got = _type_from_words(_flatten_picklist(_pick(rec, field, default="")))
         if got:
             return got
 
-    for fallback in ("Status", "Availability", "Name", "Title", "Description"):
-        got = _type_from_text(_flatten_picklist(_pick(rec, fallback, default="")))
+    status = _flatten_picklist(_pick(rec, "Status", "Availability", default=""))
+    got = _type_from_words(status) or _type_from_phrases(status)
+    if got:
+        return got
+
+    for prose in ("Name", "Title", "Description"):
+        got = _type_from_phrases(_flatten_picklist(_pick(rec, prose, default="")))
         if got:
             return got
 
-    # Genuinely no signal anywhere — sale is the safer default for a brokerage,
-    # but /debug/zoho reports these so they can be fixed at the source.
     return "sale"
 
 
