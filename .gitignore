@@ -6,3 +6,6 @@ __pycache__/
 # stray nested clones — not part of this project
 /core-spaces/
 /corespaces/
+
+# Vercel
+.vercel/

@@ -1,0 +1,20 @@
+# Keep the deployment small — smaller bundle, faster cold starts.
+.venv/
+__pycache__/
+*.pyc
+
+# Docs and setup notes: useful in the repo, dead weight in a deploy
+README.md
+DEMO_RUNBOOK.md
+UPDATE_NOTES.md
+zoho/
+supabase/
+scripts/
+
+# Source artwork (2.7MB) — the site uses public/static/core-spaces-logo.jpg
+EM - Corespaces inspired logo.png
+
+# Other hosts' config
+render.yaml
+run.sh
+runtime.txt

@@ -93,6 +93,28 @@ real content.
 
 ---
 
+## Deploy — Vercel (current host)
+
+`vercel.json` + `api/index.py` are all that's needed; the app itself is unchanged.
+
+- **`api/index.py`** re-exports the FastAPI app for Vercel's Python runtime.
+- **`public/static/`** holds the CSS, JS, images and hero video. Vercel serves
+  these straight from its CDN, so the 2.7MB video never costs a function
+  invocation. Local `uvicorn` still serves the same folder, so `./run.sh` works
+  unchanged.
+- **Pages are edge-cached** for 60s (`s-maxage`), with
+  `stale-while-revalidate`. On serverless the in-process caches reset whenever a
+  new instance starts, so the CDN does the heavy lifting instead.
+
+Environment variables go in the Vercel dashboard (Settings → Environment
+Variables), the same names as `.env.example`.
+
+> **Known limitation.** The per-IP rate limit on the enquiry forms
+> (`app/main.py`) is in-process, so on serverless it only counts submissions
+> that hit the same instance. The honeypot is unaffected. If spam ever becomes a
+> real problem, this needs a shared store (e.g. Upstash Redis) rather than a
+> dict.
+
 ## Deploy note (VPS — your usual pattern)
 ```bash
 # on the VPS, in /srv/realty-zoho-site

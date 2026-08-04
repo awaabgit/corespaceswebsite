@@ -25,9 +25,13 @@ from fastapi.templating import Jinja2Templates
 from . import config, data
 
 BASE_DIR = Path(__file__).resolve().parent
+# Static assets live in public/ at the project root so a CDN can serve them
+# directly instead of routing 3MB of images and video through the app.
+STATIC_DIR = BASE_DIR.parent / "public" / "static"
 
 app = FastAPI(title=f"{config.COMPANY_NAME} — website")
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+if STATIC_DIR.is_dir():   # in production the CDN answers these before we do
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
@@ -52,16 +56,27 @@ def _asset_version() -> str:
     slider and hero video lose their positioning, and the page looks broken.
     Appending a hash of the file contents makes the URL change whenever the file
     changes, so a fresh copy is always fetched — and cached normally otherwise.
+
+    On a serverless host the CSS/JS may not be inside the function bundle at all
+    (the CDN serves them), so hashing them isn't possible. There we fall back to
+    the deploy's git commit, which changes exactly when the assets could have.
     """
-    import hashlib, pathlib
+    import hashlib, os
     h = hashlib.md5()
-    for rel in ("static/css/styles.css", "static/js/site.js"):
-        f = pathlib.Path(__file__).parent / rel
+    hashed_any = False
+    for rel in ("css/styles.css", "js/site.js"):
         try:
-            h.update(f.read_bytes())
+            h.update((STATIC_DIR / rel).read_bytes())
+            hashed_any = True
         except OSError:
             pass
-    return h.hexdigest()[:10]
+    if hashed_any:
+        return h.hexdigest()[:10]
+
+    commit = (os.getenv("VERCEL_GIT_COMMIT_SHA")
+              or os.getenv("RENDER_GIT_COMMIT")
+              or os.getenv("GIT_COMMIT_SHA") or "")
+    return commit[:10] if commit else "dev"
 
 
 ASSET_V = _asset_version()
@@ -119,6 +134,31 @@ templates.env.globals.update(
     wa_link=_wa_link,
     mode=config.mode,
 )
+
+
+# ------------------------------------------------------------- edge caching
+# On a serverless host each request may land on a fresh instance, so the
+# in-process listings cache can't help as much as it does on a long-running
+# server. Letting the CDN hold pages for a minute recovers that and more: most
+# visitors are served from the edge without waking a function at all.
+#
+# Every page here is identical for all visitors (no logins, no per-user state),
+# so shared caching is safe. stale-while-revalidate means a page that has just
+# expired is still served instantly while it refreshes in the background.
+_NO_CACHE_PATHS = {"/health", "/debug/zoho"}
+
+
+@app.middleware("http")
+async def cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if (request.method == "GET"
+            and response.status_code == 200
+            and request.url.path not in _NO_CACHE_PATHS
+            and "cache-control" not in response.headers):
+        response.headers["Cache-Control"] = (
+            "public, max-age=0, s-maxage=60, stale-while-revalidate=300"
+        )
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -254,8 +294,12 @@ def property_image(record_id: str, file_id: str):
         hit = got
 
     body, ctype = hit
+    # s-maxage lets the CDN serve repeat views of the same photo without ever
+    # calling this function again — important on serverless, where the in-memory
+    # cache above resets whenever a new instance starts.
     return Response(content=body, media_type=ctype,
-                    headers={"Cache-Control": "public, max-age=86400"})
+                    headers={"Cache-Control":
+                             "public, max-age=86400, s-maxage=604800, immutable"})
 
 
 @app.get("/debug/zoho")
