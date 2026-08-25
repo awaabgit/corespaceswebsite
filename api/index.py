@@ -22,6 +22,7 @@ Two things this file has to get right, both learned the hard way:
    route, and answered {"detail":"Not Found"} on every page. vercel.json now
    passes the original path along as __vpath and the middleware puts it back.
 """
+import os
 import sys
 import urllib.parse
 from pathlib import Path
@@ -34,6 +35,7 @@ from app.main import app  # noqa: E402  — re-exported for the runtime
 
 _PREFIX = "/api/index"
 _PATH_PARAM = "__vpath"
+_COMMIT = (os.getenv("VERCEL_GIT_COMMIT_SHA") or "local")[:8]
 
 
 class VercelPathFix:
@@ -58,6 +60,8 @@ class VercelPathFix:
 
         scope = dict(scope)
         path = scope.get("path", "")
+        original = path
+        original_query = scope.get("query_string", b"").decode("latin-1")
 
         # the original path, handed over as a query parameter
         query = scope.get("query_string", b"").decode("latin-1")
@@ -80,7 +84,23 @@ class VercelPathFix:
             # Starlette prefers raw_path when it is set, so keep it in step
             scope["raw_path"] = path.encode("utf-8")
 
-        await self.app(scope, receive, send)
+        # Report what the platform handed us on every response, 404s included.
+        # Routing on a serverless host can only really be diagnosed from
+        # outside, and these three headers make it a single curl instead of a
+        # guess-and-redeploy cycle. Headers only -- nothing a visitor sees.
+        async def send_with_marks(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers += [
+                    (b"x-cs-commit", _COMMIT.encode("latin-1")),
+                    (b"x-cs-path-in", original.encode("latin-1")[:200]),
+                    (b"x-cs-path-out", path.encode("latin-1")[:200]),
+                    (b"x-cs-query-in", original_query.encode("latin-1")[:200]),
+                ]
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_with_marks)
 
 
 # Added to the app rather than wrapped around it, so `app` stays a FastAPI
