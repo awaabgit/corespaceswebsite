@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KPI Tracker — {{ company.name }}</title>
+  {# Internal tool. Crawlable-but-noindex is deliberate: a robots.txt Disallow
+     would stop crawlers fetching the page and therefore stop them ever seeing
+     this tag, leaving the URL free to be indexed from any external link. #}
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#0A463A">
+  <style>
+    :root{
+      --green:#0A463A; --green-deep:#06372D; --gold:#C2A24E;
+      --ink:#1B2620; --ink-soft:#5C665F; --bone:#F6F4EC; --line:#E4DECF;
+      --font:'Plus Jakarta Sans',-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--ink);background:#fff}
+    a{color:inherit}
+    .wrap{max-width:1100px;margin:0 auto;padding:22px}
+
+    /* ---- sign in ---- */
+    .signin{min-height:100vh;background:var(--green-deep);display:flex;align-items:center;justify-content:center;padding:20px}
+    .signin form{background:#fff;border-radius:16px;padding:32px;width:min(340px,100%);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+    .signin .brand{font-size:22px;font-weight:800;color:var(--green);letter-spacing:.3px}
+    .signin .sub{font-size:13px;color:var(--ink-soft);margin-bottom:20px}
+
+    label.field{font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:5px}
+    input[type=text],input[type=password],input[type=number]{
+      width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+      font-size:15px;font-family:inherit;margin-bottom:14px}
+    input:focus{outline:2px solid var(--gold);outline-offset:1px}
+    .btn{background:var(--green);color:#fff;border:0;border-radius:9px;padding:12px 26px;
+      font-weight:700;font-size:15px;font-family:inherit;cursor:pointer}
+    .btn:hover{background:var(--green-deep)}
+    .btn-full{width:100%}
+    .err{color:#B03A2E;font-size:12.5px;margin-bottom:10px}
+    .ok{color:var(--green);font-weight:700;font-size:13px}
+
+    /* ---- chrome ---- */
+    .topbar{background:var(--green-deep);color:#fff;padding:16px 22px;display:flex;
+      align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+    .topbar .name{font-size:19px;font-weight:800;letter-spacing:.3px}
+    .topbar .who{font-size:12px;color:#D8CBA0}
+    .ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);
+      border-radius:8px;padding:7px 14px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer}
+    .ghost:hover{background:rgba(255,255,255,.1)}
+
+    .tabs{display:flex;gap:8px;padding:10px 22px 0;background:var(--bone)}
+    .tab{background:transparent;color:var(--ink-soft);border:1px solid transparent;
+      border-radius:8px 8px 0 0;padding:8px 16px;font-weight:700;font-size:13px;
+      font-family:inherit;cursor:pointer;text-decoration:none;margin-bottom:-1px;display:inline-block}
+    .tab.on{background:#fff;color:var(--green);border-color:var(--line);border-bottom-color:#fff}
+
+    .weekbar{display:flex;align-items:center;gap:10px;padding:12px 22px;background:var(--bone);
+      border-bottom:1px solid var(--line);flex-wrap:wrap}
+    .weekbar .cap{font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.5px}
+    .nav{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;
+      padding:0 9px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--green);
+      font-size:15px;line-height:1;text-decoration:none;font-family:inherit;cursor:pointer}
+    .nav:hover{border-color:var(--gold)}
+    .nav.text{font-size:12px;font-weight:600}
+
+    h2.hd{font-size:18px;font-weight:800;color:var(--green);margin:0 0 12px}
+    h3.hd{font-size:15px;font-weight:800;color:var(--green);margin:22px 0 8px}
+    .hint{color:var(--ink-soft);font-size:13px;margin:-6px 0 0}
+
+    /* ---- entry form ---- */
+    .entry{border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px;background:var(--bone)}
+    .entry .day{font-weight:800;font-size:14px}
+    .entry .note{font-size:12px;color:var(--ink-soft);margin-bottom:12px}
+    .fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+    .fields input{margin-bottom:3px}
+    .target{font-size:11px;color:var(--ink-soft)}
+
+    /* ---- progress ---- */
+    .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:18px}
+    .panel{border:1px solid var(--line);border-radius:14px;padding:16px}
+    .panel .ttl{font-weight:800;font-size:14px;margin-bottom:12px}
+    .row{margin-bottom:11px}
+    .row .top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;gap:10px}
+    .row .top span{color:var(--ink-soft)}
+    .row .top strong em{color:var(--ink-soft);font-weight:400;font-style:normal}
+    .track{height:7px;background:#EFECE2;border-radius:5px;overflow:hidden}
+    .fill{height:100%;border-radius:5px}
+
+    /* ---- team grid ---- */
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:14px}
+    .card{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;
+      box-shadow:0 1px 3px rgba(10,70,58,.06);text-decoration:none;color:inherit;display:block;
+      transition:transform .15s,box-shadow .15s}
+    .card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(10,70,58,.12)}
+    .card .head{background:var(--green);color:#fff;padding:12px 14px;display:flex;
+      justify-content:space-between;align-items:center;gap:8px}
+    .card .head b{font-weight:700;font-size:15px}
+    .pill{background:#fff;color:var(--green);border-radius:20px;padding:2px 9px;font-size:12px;font-weight:800}
+    .card .body{padding:12px 14px}
+    .more{margin-top:6px;font-size:11px;color:var(--gold);font-weight:700}
+
+    /* ---- daily log ---- */
+    .scroll{overflow-x:auto}
+    table{border-collapse:collapse;width:100%;font-size:12px;margin-top:8px}
+    thead tr{background:var(--green);color:#fff}
+    th{padding:9px 10px;text-align:left;font-weight:700;font-size:11px;white-space:nowrap}
+    th+th,td+td{text-align:center}
+    td{padding:8px 10px;border-bottom:1px solid #EFECE2;white-space:nowrap}
+    tbody tr:nth-child(even){background:var(--bone)}
+    tbody tr.today td{font-weight:700}
+    td.empty{color:#C9CFCB}
+    .banner{border:1px solid var(--line);border-left:3px solid var(--gold);background:var(--bone);
+      border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.6}
+  </style>
+</head>
+<body>
+
+{% if not configured %}
+  <div class="signin">
+    <div style="background:#fff;border-radius:16px;padding:32px;max-width:460px">
+      <div class="brand" style="font-size:22px;font-weight:800;color:#0A463A">CORE SPACES</div>
+      <div class="sub">KPI Tracker</div>
+      <p style="font-size:13.5px;line-height:1.6;margin:0">
+        This page isn't configured yet. It needs Supabase credentials on the server —
+        <code>SUPABASE_URL</code> and <code>SUPABASE_KEY</code> (or <code>KPI_SUPABASE_URL</code>
+        and <code>KPI_SUPABASE_KEY</code> if the KPI tables live in a different project).
+        Set them in the hosting dashboard and reload.
+      </p>
+    </div>
+  </div>
+
+{% elif not user %}
+  <div class="signin">
+    <form method="post" action="/kpi/login">
+      <div class="brand">CORE SPACES</div>
+      <div class="sub">Team KPI Tracker — sign in</div>
+      <label class="field" for="kpi-name">Name</label>
+      <input id="kpi-name" type="text" name="name" placeholder="e.g. Francis" autocomplete="username" autofocus required>
+      <label class="field" for="kpi-pass">Password</label>
+      <input id="kpi-pass" type="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+      {% if error %}<div class="err">{{ error }}</div>{% endif %}
+      <button type="submit" class="btn btn-full">Sign in</button>
+    </form>
+  </div>
+
+{% else %}
+  <div class="topbar">
+    <div>
+      <div class="name">CORE SPACES</div>
+      <div class="who">KPI Tracker · {{ user.name }}{% if user.role == 'manager' %} (Manager){% endif %}</div>
+    </div>
+    <form method="post" action="/kpi/logout" style="margin:0">
+      <button type="submit" class="ghost">Log out</button>
+    </form>
+  </div>
+
+  {% if user.role == 'manager' and not viewing %}
+    <div class="tabs">
+      <a class="tab {% if tab == 'team' %}on{% endif %}" href="{{ url_team }}">Team KPIs</a>
+      <a class="tab {% if tab == 'mine' %}on{% endif %}" href="{{ url_mine }}">My own KPIs</a>
+    </div>
+  {% endif %}
+
+  <div class="weekbar">
+    <span class="cap">Week of</span>
+    <a class="nav" href="{{ url_prev }}" title="Previous week" rel="nofollow">‹</a>
+    <strong style="font-size:14px">{{ week_label }}</strong>
+    <a class="nav" href="{{ url_next }}" title="Next week" rel="nofollow">›</a>
+    <a class="nav text" href="{{ url_this_week }}" rel="nofollow">This week</a>
+  </div>
+
+  <div class="wrap">
+    {% if error %}<div class="banner" style="border-left-color:#B03A2E;margin-bottom:16px">{{ error }}</div>{% endif %}
+
+    {% if view == 'team' %}
+      <h2 class="hd">Your team this week</h2>
+      <p class="hint">Click a team member for their full breakdown vs targets.</p>
+      {% if not cards %}
+        <div class="banner" style="margin-top:14px">
+          No team members found. Add rows to <code>kpi_users</code> with <code>role</code> set to
+          <code>member</code> and they'll appear here.
+        </div>
+      {% endif %}
+      <div class="cards">
+        {% for c in cards %}
+          <a class="card" href="{{ c.url }}">
+            <div class="head"><b>{{ c.name }}</b><span class="pill">{{ c.avg }}%</span></div>
+            <div class="body">
+              {% for r in c.rows %}
+                <div class="row">
+                  <div class="top"><span>{{ r.label }}</span><strong>{{ r.value }}<em> / {{ r.target }}</em></strong></div>
+                  <div class="track"><div class="fill" style="width:{{ r.pct }}%;background:{{ r.color }}"></div></div>
+                </div>
+              {% endfor %}
+              <div class="more">View full breakdown →</div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap">
+        {% if viewing %}<a class="nav text" href="{{ url_team }}" rel="nofollow">‹ Back</a>{% endif %}
+        <h2 class="hd" style="margin:0">{{ report.name }}</h2>
+      </div>
+
+      {% if can_edit %}
+        <form class="entry" method="post" action="/kpi/save">
+          <input type="hidden" name="week" value="{{ anchor }}">
+          <input type="hidden" name="tab" value="{{ tab }}">
+          <div class="day">Today — {{ today_label }}</div>
+          <div class="note">Enter your numbers for today, then Save. Saving again updates today's entry.</div>
+          <div class="fields">
+            {% for k in kpis %}
+              <div>
+                <label class="field" for="f-{{ k.key }}">{{ k.label }}</label>
+                <input id="f-{{ k.key }}" type="number" min="0" step="1" name="{{ k.key }}"
+                       value="{{ report.today_values[k.key] }}" inputmode="numeric">
+                <div class="target">daily target: {{ k.daily }}</div>
+              </div>
+            {% endfor %}
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button type="submit" class="btn">Save today's numbers</button>
+            {% if saved %}<span class="ok">✓ Saved</span>{% endif %}
+          </div>
+        </form>
+      {% endif %}
+
+      <div class="panels">
+        <div class="panel">
+          <div class="ttl">This week</div>
+          {% for r in report.week %}
+            <div class="row">
+              <div class="top"><span>{{ r.label }}</span><strong>{{ r.value }}<em> / {{ r.target }}</em></strong></div>
+              <div class="track"><div class="fill" style="width:{{ r.pct }}%;background:{{ r.color }}"></div></div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="panel">
+          <div class="ttl">This month ({{ report.month_label }})</div>
+          {% for r in report.month %}
+            <div class="row">
+              <div class="top"><span>{{ r.label }}</span><strong>{{ r.value }}<em> / {{ r.target }}</em></strong></div>
+              <div class="track"><div class="fill" style="width:{{ r.pct }}%;background:{{ r.color }}"></div></div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <h3 class="hd">Daily log — week of {{ week_label }}</h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Day</th>{% for k in kpis %}<th>{{ k.short }}</th>{% endfor %}</tr>
+          </thead>
+          <tbody>
+            {% for d in report.log %}
+              <tr {% if d.is_today %}class="today"{% endif %}>
+                <td>{{ d.label }}</td>
+                {% for c in d.cells %}<td {% if not d.has %}class="empty"{% endif %}>{{ c }}</td>{% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+</body>
+</html>

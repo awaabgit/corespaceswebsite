@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import config, data
+from . import config, data, kpi
 
 BASE_DIR = Path(__file__).resolve().parent
 # Static assets live in public/ at the project root so a CDN can serve them
@@ -146,6 +146,11 @@ templates.env.globals.update(
 # so shared caching is safe. stale-while-revalidate means a page that has just
 # expired is still served instantly while it refreshes in the background.
 _NO_CACHE_PATHS = {"/health", "/debug/zoho"}
+# The KPI tracker breaks the assumption above: it has logins and shows one
+# person's figures. A minute of shared caching there would hand one member's
+# numbers to whoever asked next, so the whole /kpi tree opts out. Those routes
+# also set no-store themselves; this is the safety net for any added later.
+_NO_CACHE_PREFIXES = ("/kpi",)
 
 
 @app.middleware("http")
@@ -154,6 +159,7 @@ async def cache_headers(request: Request, call_next):
     if (request.method == "GET"
             and response.status_code == 200
             and request.url.path not in _NO_CACHE_PATHS
+            and not request.url.path.startswith(_NO_CACHE_PREFIXES)
             and "cache-control" not in response.headers):
         response.headers["Cache-Control"] = (
             "public, max-age=0, s-maxage=60, stale-while-revalidate=300"
@@ -323,6 +329,152 @@ def debug_zoho(key: str = ""):
                              "hint": "No Zoho keys set in the environment."})
     from . import zoho
     return JSONResponse(zoho.diagnose())
+
+
+# ---------------------------------------------------------------- KPI tracker
+# Internal team page at /kpi: staff log their daily numbers, managers see the
+# team. Every Supabase call happens server-side in app/kpi.py — the note at the
+# top of that module explains why it is not the browser-side React original.
+
+_KPI_HEADERS = {"Cache-Control": "no-store, private",
+                "X-Robots-Tag": "noindex, nofollow"}
+
+
+def _kpi_user(request: Request):
+    return kpi.read_token(request.cookies.get(kpi.SESSION_COOKIE))
+
+
+def _kpi_page(request: Request, ctx: dict, status_code: int = 200):
+    response = templates.TemplateResponse(request, "kpi.html", ctx, status_code=status_code)
+    response.headers.update(_KPI_HEADERS)
+    return response
+
+
+def _kpi_go(target: str):
+    response = RedirectResponse(target, status_code=303)
+    response.headers.update(_KPI_HEADERS)
+    return response
+
+
+def _kpi_link(anchor: str, **params) -> str:
+    import urllib.parse
+    query = {"week": anchor}
+    query.update(params)
+    query = {k: v for k, v in query.items() if v}
+    return "/kpi?" + urllib.parse.urlencode(query) if query else "/kpi"
+
+
+@app.get("/kpi", response_class=HTMLResponse)
+def kpi_page(request: Request, week: str = "", member: str = "",
+             tab: str = "", saved: int = 0, err: str = ""):
+    if not kpi.enabled():
+        return _kpi_page(request, {"configured": False})
+
+    user = _kpi_user(request)
+    if not user:
+        return _kpi_page(request, {"configured": True, "user": None})
+
+    anchor = kpi.monday_of(week or kpi.today_iso())
+    is_manager = user["role"] == "manager"
+    tab = "mine" if tab == "mine" else "team"
+    viewing = member.strip() if (is_manager and member.strip()) else ""
+
+    ctx = {
+        "configured": True, "user": user, "kpis": kpi.KPIS, "anchor": anchor,
+        "tab": tab, "viewing": viewing, "saved": bool(saved),
+        "week_label": kpi.fmt_day(anchor), "today_label": kpi.fmt_day(kpi.today_iso()),
+        "url_prev": _kpi_link(kpi.shift_week(anchor, -1), member=viewing, tab=tab),
+        "url_next": _kpi_link(kpi.shift_week(anchor, 1), member=viewing, tab=tab),
+        "url_this_week": _kpi_link(kpi.monday_of(kpi.today_iso()), member=viewing, tab=tab),
+        "url_team": _kpi_link(anchor),
+        "url_mine": _kpi_link(anchor, tab="mine"),
+        "error": "Couldn't save those numbers — try again." if err == "save" else "",
+    }
+
+    # A manager on the team tab needs everyone; anyone else needs one person.
+    # Widen the query to cover the displayed week as well as the month, since a
+    # week at a month boundary reaches into the neighbouring one.
+    days = kpi.week_dates(anchor)
+    month_start, month_end = kpi.month_bounds(anchor)
+    start, end = min(days[0], month_start), max(days[-1], month_end)
+    only = viewing or (None if (is_manager and tab == "team") else user["name"])
+
+    try:
+        rows = kpi.fetch_entries(start, end, member=only)
+        members = kpi.list_members() if only is None else []
+    except Exception as exc:
+        print(f"[kpi] load failed: {exc}")
+        ctx["error"] = "Couldn't reach the database just now. Refresh to try again."
+        rows, members = [], []
+
+    if only is None:
+        ctx.update(view="team",
+                   cards=[dict(c, url=_kpi_link(anchor, member=c["name"]))
+                          for c in kpi.team_cards(rows, members, anchor)])
+    else:
+        ctx.update(view="member",
+                   report=kpi.member_report(rows, only, anchor),
+                   can_edit=(only == user["name"]))
+    return _kpi_page(request, ctx)
+
+
+@app.post("/kpi/login")
+def kpi_login(request: Request, name: str = Form(""), password: str = Form("")):
+    if not kpi.enabled():
+        return _kpi_page(request, {"configured": False})
+
+    ip = _client_ip(request)
+    if kpi.login_blocked(ip):
+        return _kpi_page(request, {"configured": True, "user": None,
+                                   "error": "Too many attempts. Wait a few minutes."},
+                         status_code=429)
+    try:
+        user = kpi.authenticate(name, password)
+    except Exception:
+        return _kpi_page(request, {"configured": True, "user": None,
+                                   "error": "Couldn't reach the database. Try again."},
+                         status_code=503)
+    if not user:
+        kpi.note_login_failure(ip)
+        # One message for both cases: naming which half was wrong would let
+        # anyone confirm who works here.
+        return _kpi_page(request, {"configured": True, "user": None,
+                                   "error": "Wrong name or password."},
+                         status_code=401)
+
+    response = _kpi_go("/kpi")
+    response.set_cookie(
+        kpi.SESSION_COOKIE, kpi.make_token(user["name"], user["role"]),
+        max_age=kpi.SESSION_HOURS * 3600, httponly=True, samesite="lax",
+        secure=_base_url(request).startswith("https://"), path="/kpi",
+    )
+    return response
+
+
+@app.post("/kpi/logout")
+def kpi_logout():
+    response = _kpi_go("/kpi")
+    response.delete_cookie(kpi.SESSION_COOKIE, path="/kpi")
+    return response
+
+
+@app.post("/kpi/save")
+async def kpi_save(request: Request):
+    """Always writes the signed-in person's own row — never anyone else's."""
+    user = _kpi_user(request) if kpi.enabled() else None
+    if not user:
+        return _kpi_go("/kpi")
+
+    form = await request.form()
+    anchor = kpi.monday_of(str(form.get("week") or kpi.today_iso()))
+    tab = "mine" if form.get("tab") == "mine" else ""
+    try:
+        kpi.save_entry(user["name"], kpi.today_iso(),
+                       {k["key"]: form.get(k["key"], "") for k in kpi.KPIS})
+    except Exception as exc:
+        print(f"[kpi] save failed: {exc}")
+        return _kpi_go(_kpi_link(anchor, tab=tab, err="save"))
+    return _kpi_go(_kpi_link(anchor, tab=tab, saved="1"))
 
 
 @app.get("/robots.txt")
