@@ -139,8 +139,45 @@ def fmt_day(s: str) -> str:
     return f"{d.strftime('%a')} {d.day} {d.strftime('%b')}"
 
 
+# ------------------------------------------------------------ password hashes
+# Passcodes were originally stored as plain text. These read and write the
+# hashed form while still accepting a legacy plain-text row, so the table can be
+# migrated (scripts/hash_kpi_passwords.py) without the page going down in
+# between and without anyone having to change their password.
+_SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1}
+_HASH_PREFIX = "scrypt$"
+
+
+def hash_passcode(plain: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.scrypt(plain.encode("utf-8"), salt=salt, dklen=32, **_SCRYPT)
+    return (f"{_HASH_PREFIX}{_SCRYPT['n']}${_SCRYPT['r']}${_SCRYPT['p']}$"
+            f"{base64.b64encode(salt).decode()}${base64.b64encode(digest).decode()}")
+
+
+def verify_passcode(stored: str, supplied: str) -> bool:
+    stored = stored or ""
+    if not stored.startswith(_HASH_PREFIX):
+        # Legacy plain-text row. Still constant-time.
+        return secrets.compare_digest(stored, supplied)
+    try:
+        _, n, r, pp, salt_b64, digest_b64 = stored.split("$")
+        expected = base64.b64decode(digest_b64)
+        actual = hashlib.scrypt(supplied.encode("utf-8"), salt=base64.b64decode(salt_b64),
+                                n=int(n), r=int(r), p=int(pp), dklen=len(expected))
+    except (ValueError, TypeError):
+        return False
+    return hmac.compare_digest(expected, actual)
+
+
+def _burn_a_hash() -> None:
+    """Spend roughly a verify's worth of time so a missing name and a wrong
+    password can't be told apart by how long the answer takes."""
+    hashlib.scrypt(b"x", salt=b"y" * 16, dklen=32, **_SCRYPT)
+
+
 # --------------------------------------------------------------------- login
-# The passwords in kpi_users are short and plain text, so an unthrottled login
+# The passwords in kpi_users are short, so an unthrottled login
 # form is a free brute-force oracle. Same shape as the inquiry limiter in
 # main.py: count recent failures per IP and stop answering for a while.
 _LOGIN_FAILS: dict[str, list[float]] = {}
@@ -178,12 +215,10 @@ def authenticate(name: str, password: str) -> dict[str, str] | None:
         raise
     rows = res.data or []
     if not rows:
-        # Still burn a comparison so a missing name and a wrong password don't
-        # take visibly different amounts of time.
-        secrets.compare_digest(password, "no-such-user")
+        _burn_a_hash()
         return None
     row = rows[0]
-    if not secrets.compare_digest(str(row.get("passcode") or ""), password):
+    if not verify_passcode(str(row.get("passcode") or ""), password):
         return None
     role = str(row.get("role") or "member").strip().lower()
     return {"name": str(row.get("name") or name), "role": "manager" if role == "manager" else "member"}
