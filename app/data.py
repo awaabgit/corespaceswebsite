@@ -76,29 +76,48 @@ def get_listing(slug: str) -> dict[str, Any] | None:
 
 
 def create_inquiry(
-    name: str, email: str, phone: str, message: str, listing: dict[str, Any] | None = None
+    name: str, email: str, phone: str, message: str,
+    listing: dict[str, Any] | None = None, referral: str = "",
 ) -> None:
     """
     Send an inquiry wherever we can. Best effort: push to Zoho as a Lead, and/or
     log to Supabase. In mock mode it just prints so you can see it working.
+
+    `referral` is the team member whose personal link (corespaces.info/<name>)
+    the visitor arrived through. They brought the client in, so their routing
+    beats the listing's own agent; the listing agent is only the fallback when
+    the referral can't be assigned to anyone in Zoho.
     """
     title = listing.get("title", "") if listing else ""
     slug = listing.get("slug", "") if listing else ""
     # the agent who posted this listing — the lead gets assigned to them
     owner_id = listing.get("_zoho_owner_id", "") if listing else ""
 
+    label = ""
+    if referral:
+        from . import referrals
+        if config.zoho_enabled():
+            ref_owner, label = referrals.route(referral)
+            owner_id = ref_owner or owner_id
+        else:
+            name_ = referrals.name_for(referral)
+            label = f"Came from {name_}'s link — corespaces.info/{referral}"
+
     if config.zoho_enabled():
         from . import zoho
         zoho.create_lead(name, email, phone, message,
-                         listing_title=title, owner_id=owner_id)
+                         listing_title=title, owner_id=owner_id, label=label)
 
     if config.supabase_enabled():
         from . import supabase_client
-        supabase_client.log_lead(name, email, phone, message, listing_slug=slug)
+        supabase_client.log_lead(name, email, phone,
+                                 f"{label}\n\n{message}" if label else message,
+                                 listing_slug=slug)
 
     if config.mode() == "mock":
         print(
-            f"[INQUIRY • mock mode] {name} <{email}> {phone} | re: {title or 'general'}\n"
+            f"[INQUIRY • mock mode] {name} <{email}> {phone} | re: {title or 'general'}"
+            f"{' | ' + label.splitlines()[0] if label else ''}\n"
             f"  {message}"
         )
 

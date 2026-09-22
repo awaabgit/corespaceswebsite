@@ -604,7 +604,8 @@ def download_attachment(record_id: str, attachment_id: str) -> bytes:
 
 
 def create_lead(name: str, email: str, phone: str, message: str,
-                listing_title: str = "", owner_id: str = "") -> dict[str, Any]:
+                listing_title: str = "", owner_id: str = "",
+                label: str = "") -> dict[str, Any]:
     """
     Create a Lead in Zoho from a website inquiry.
 
@@ -612,6 +613,9 @@ def create_lead(name: str, email: str, phone: str, message: str,
     posted that listing — we assign the Lead to them so it lands in the right
     agent's queue instead of sitting unassigned. If Zoho rejects the assignment
     (user deactivated, id stale), we retry unassigned rather than lose the lead.
+
+    `label` goes above everything else in the description — used to say which
+    team member's personal link the enquiry came through (app/referrals.py).
     """
     url = f"{config.ZOHO_API_HOST}/crm/v2/Leads"
     record: dict[str, Any] = {
@@ -621,6 +625,8 @@ def create_lead(name: str, email: str, phone: str, message: str,
         "Lead_Source": "Website",
         "Description": f"[Re: {listing_title}]\n\n{message}" if listing_title else message,
     }
+    if label:
+        record["Description"] = f"{label}\n\n{record['Description']}"
     if owner_id:
         record["Owner"] = {"id": owner_id}
 

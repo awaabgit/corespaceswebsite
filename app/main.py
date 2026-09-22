@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import config, data, kpi
+from . import config, data, kpi, referrals
 
 BASE_DIR = Path(__file__).resolve().parent
 # Static assets live in public/ at the project root so a CDN can serve them
@@ -262,7 +262,8 @@ def inquire(
     else:
         listing = data.get_listing(slug) if slug else None
         try:
-            data.create_inquiry(name, email, phone, message, listing=listing)
+            data.create_inquiry(name, email, phone, message, listing=listing,
+                                referral=referrals.from_request(request))
         except Exception as exc:  # never 500 a contact form at the visitor
             print(f"[inquire] delivery failed: {exc}")
 
@@ -475,6 +476,32 @@ async def kpi_save(request: Request):
         print(f"[kpi] save failed: {exc}")
         return _kpi_go(_kpi_link(anchor, tab=tab, err="save"))
     return _kpi_go(_kpi_link(anchor, tab=tab, saved="1"))
+
+
+# ------------------------------------------------------------ personal links
+# corespaces.info/kassim etc. — see app/referrals.py. Each one remembers whose
+# link it was and shows the normal home page. Registered one route per person
+# (not a catch-all) so every other unknown URL still 404s exactly as before.
+def _referral_landing(slug: str):
+    def landing(request: Request):
+        response = RedirectResponse("/", status_code=302)
+        response.set_cookie(
+            referrals.COOKIE, slug, max_age=referrals.COOKIE_DAYS * 86400,
+            httponly=True, samesite="lax", path="/",
+            secure=_base_url(request).startswith("https://"),
+        )
+        # a shared cache must never hand one person's tag to the next visitor
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    landing.__name__ = f"referral_{slug}"
+    return landing
+
+
+for _slug in referrals.TEAM:
+    # lower-case plus Capitalised: bios get typed both ways
+    for _path in {f"/{_slug}", f"/{_slug.capitalize()}"}:
+        app.add_api_route(_path, _referral_landing(_slug), methods=["GET"],
+                          include_in_schema=False)
 
 
 @app.get("/robots.txt")
