@@ -1,6 +1,4 @@
 {% extends "base.html" %}
-{% block title %}About — {{ company.name }}{% endblock %}
-{% block meta_description %}{{ company.name }} was founded by Najam, a Dubai property broker who wanted to build the kind of agency he'd have wanted to work with.{% endblock %}
 
 {% block content %}
 <section class="container section narrow">
@@ -41,13 +39,28 @@
       not a switchboard.
     </p>
 
-    <h2>What we cover</h2>
+    <h2>{{ t.about.cover_heading }}</h2>
+    {{ t.about.cover_body|md }}
+
+    <h2>{{ t.about.office_heading }}</h2>
     <p>
-      Sales and lettings across Dubai — Marina, Downtown, Palm Jumeirah, Business Bay,
-      Arabian Ranches, JVC and the communities around them. Ready and off-plan. If you're
-      selling or letting, we'll give you a valuation we can actually defend and a plan to
-      move it.
+      {{ cfg.LEGAL_NAME }}<br>
+      {{ cfg.STREET_ADDRESS }}, {{ cfg.CITY }}<br>
+      <a href="tel:{{ cfg.BUSINESS_PHONE|replace(' ', '') }}">{{ cfg.BUSINESS_PHONE }}</a> ·
+      <a href="mailto:{{ cfg.BUSINESS_EMAIL }}">{{ cfg.BUSINESS_EMAIL }}</a>
     </p>
+    <p><strong>{{ t.about.hours_label }}:</strong> {{ t.about.hours }}</p>
+    <div class="map-embed">
+      <iframe title="{{ t.about.map_title }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+              src="https://www.google.com/maps?q={{ t.about.map_query|urlencode }}&output=embed"></iframe>
+    </div>
+
+    <h2>{{ t.about.related_heading }}</h2>
+    <ul class="related-links">
+      <li><a href="/team">{{ t.footer.team }}</a></li>
+      <li><a href="/projects">{{ t.footer.projects }}</a></li>
+      {% for a in area_guides %}<li><a href="/areas/{{ a.slug }}">{{ fill(t.projects.area_guide, area=a.area) }}</a></li>{% endfor %}
+    </ul>
   </div>
   <a class="btn" href="/contact">Get in touch</a>
 </section>

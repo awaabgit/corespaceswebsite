@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_card.html" import listing_card, project_card, insight_card %}
+
+{% block content %}
+<article class="container section narrow-wide">
+  <p class="eyebrow">{{ a.emirate }}</p>
+  <h1>{{ h1 }}</h1>
+  {% if a.updated %}<p class="updated muted">{{ fill(t.areas.updated, date=fmt_date(a.updated)) }}</p>{% endif %}
+  <div class="prose lead-prose">{{ a.intro|md }}</div>
+
+  <div class="prose">
+    {% for sec in a.sections %}
+    <h2>{{ sec.heading }}</h2>
+    {{ sec.body|md }}
+    {% endfor %}
+  </div>
+
+  {% if projects %}
+  <h2>{{ fill(t.areas.live_projects, area=a.area) }}</h2>
+  <div class="grid grid-launch">{% for p in projects %}{{ project_card(p, t) }}{% endfor %}</div>
+  {% endif %}
+
+  {% if area_listings %}
+  <h2>{{ fill(t.areas.our_listings, area=a.area) }}</h2>
+  <div class="grid">{% for l in area_listings %}{{ listing_card(l) }}{% endfor %}</div>
+  {% endif %}
+
+  {% if a.faq %}
+  <h2>{{ t.projects.faq }}</h2>
+  <div class="faq">
+    {% for f in a.faq %}<details><summary>{{ f.q }}</summary><p>{{ f.a }}</p></details>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if related %}
+  <h2>{{ t.areas.related }}</h2>
+  <div class="grid">{% for art in related %}{{ insight_card(art, t) }}{% endfor %}</div>
+  {% endif %}
+
+  {% if a.sources %}
+  <h2 class="sources-h">{{ t.projects.sources }}</h2>
+  <ol class="sources">
+    {% for src in a.sources %}
+    <li>{% if src.url %}<a href="{{ src.url }}" target="_blank" rel="noopener">{{ src.title }}</a>{% else %}{{ src.title }}{% endif %} — {{ src.publisher }}, {{ src.date }}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  <p class="related-line"><a href="/areas">{{ t.footer.areas }}</a> · <a href="/listings">{{ t.not_found.listings }}</a> · <a href="/contact">{{ t.footer.contact }}</a></p>
+</article>
+{% endblock %}

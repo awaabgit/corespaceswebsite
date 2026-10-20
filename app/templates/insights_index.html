@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "_card.html" import insight_card %}
+
+{% block content %}
+<section class="container section">
+  <h1>{{ t.insights.h1 }}</h1>
+  <p class="lead">{{ t.insights.intro }}</p>
+  <div class="grid">{% for art in articles %}{{ insight_card(art, t) }}{% endfor %}</div>
+  <p class="related-line"><a href="/areas">{{ t.footer.areas }}</a> · <a href="/projects">{{ t.footer.projects }}</a> · <a href="/listings">{{ t.not_found.listings }}</a></p>
+</section>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_card.html" import area_tile %}
+
+{% block content %}
+<section class="container section">
+  <h1>{{ t.areas.h1 }}</h1>
+  <p class="lead">{{ t.areas.intro }}</p>
+  {% for emirate, items in grouped|dictsort %}
+  <h2>{{ emirate }}</h2>
+  <div class="tiles">{% for a in items %}{{ area_tile(a) }}{% endfor %}</div>
+  {% endfor %}
+  <p class="related-line"><a href="/projects">{{ t.footer.projects }}</a> · <a href="/insights">{{ t.footer.insights }}</a> · <a href="/listings">{{ t.not_found.listings }}</a></p>
+</section>
+{% endblock %}

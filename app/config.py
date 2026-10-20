@@ -24,7 +24,7 @@ def _get(key: str, default: str = "") -> str:
 
 # --- Company / branding (FINISH phase: drop in the investor's real values) ---
 COMPANY_NAME = _get("COMPANY_NAME", "CORE Spaces")
-COMPANY_TAGLINE = _get("COMPANY_TAGLINE", "Dubai property, brokered properly.")
+COMPANY_TAGLINE = _get("COMPANY_TAGLINE", "UAE property, brokered properly.")
 COMPANY_PHONE = _get("COMPANY_PHONE", "+971 56 313 8010")
 COMPANY_EMAIL = _get("COMPANY_EMAIL", "najam@corespaces.info")
 COMPANY_ADDRESS = _get("COMPANY_ADDRESS", "Business Bay, Dubai, UAE")
@@ -149,7 +149,7 @@ GA4_ID = _get("GA4_ID")
 GSC_VERIFICATION = _get("GSC_VERIFICATION",
                         "T-yE5uhifqGvHZ7U7eozSxlHqpsxLCm2jRxf21HG2uA")
 # Key for IndexNow (Bing/Yandex instant indexing). Blank disables the ping.
-INDEXNOW_KEY = _get("INDEXNOW_KEY")
+INDEXNOW_KEY = _get("INDEXNOW_KEY", "8f3c1e7a52d94b6e9a0c4d2f7b1e6a35")
 
 # The Zoho field holding the listing permit / Trakheesi number, if the CRM has
 # one. Blank means the permit line is not rendered at all. Set this to the

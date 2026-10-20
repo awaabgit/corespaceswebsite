@@ -1,10 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Not found — {{ company.name }}{% endblock %}
 
 {% block content %}
 <section class="container section narrow center">
-  <h1>That listing isn't here</h1>
-  <p class="muted">It may have been let, sold or taken down.</p>
-  <a class="btn" href="/listings">See current listings</a>
+  <h1>{{ t.not_found.h1 }}</h1>
+  <p class="muted">{{ t.not_found.body }}</p>
+  <ul class="nf-links">
+    <li><a class="btn" href="/listings">{{ t.not_found.listings }}</a></li>
+    <li><a class="btn btn-ghost" href="/areas">{{ t.not_found.areas }}</a></li>
+    <li><a class="btn btn-ghost" href="/projects">{{ t.not_found.projects }}</a></li>
+    <li><a class="btn btn-ghost" href="/insights">{{ t.not_found.insights }}</a></li>
+  </ul>
 </section>
 {% endblock %}

@@ -12,7 +12,7 @@ services:
       - key: COMPANY_NAME
         value: "CORE Spaces"
       - key: COMPANY_TAGLINE
-        value: "Dubai property, brokered properly."
+        value: "UAE property, brokered properly."
       # Main contact — used in the footer, on the contact page, and for any
       # listing whose agent has no number of their own. Currently Najam's
       # direct line; swap for an office number / info@ address when there is one.

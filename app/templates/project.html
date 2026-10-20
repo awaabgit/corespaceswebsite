@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% from "_card.html" import listing_card, project_card %}
+{% from "_icons.html" import whatsapp %}
+
+{% block content %}
+{% set wa = wa_link(p.whatsapp, p.whatsapp_text) %}
+
+{% if closed %}
+<section class="container closed-banner" role="status">
+  <p><strong>{{ fill(t.projects.closed_banner, area=p.area) }}</strong></p>
+  {% if alt_projects %}
+  <div class="grid grid-launch">{% for x in alt_projects %}{{ project_card(x, t) }}{% endfor %}</div>
+  {% endif %}
+  {% if alt_listings %}
+  <div class="grid">{% for l in alt_listings %}{{ listing_card(l) }}{% endfor %}</div>
+  {% endif %}
+  {% if guide %}<p><a class="link-more" href="/areas/{{ guide.slug }}">{{ fill(t.projects.closed_guide, area=guide.area) }}</a></p>{% endif %}
+</section>
+{% endif %}
+
+<section class="proj-hero">
+  {% if p.images and p.images.hero %}
+  <img class="proj-hero-img" src="{{ p.images.dir }}/{{ p.images.hero }}"
+       alt="{{ fill(p.images.alt, slot='hero') }}" width="1600" height="900" onerror="this.remove()">
+  {% endif %}
+  <div class="container proj-hero-inner">
+    <p class="eyebrow">{{ p.developer }} · {{ p.area }}, {{ p.emirate }}</p>
+    <h1>{{ p.h1 }}</h1>
+    <p class="proj-lead">{{ p.hero_line }}</p>
+    <p class="proj-sub">{{ p.sub_line }}</p>
+    <div class="proj-ctas">
+      <a class="btn btn-wa-solid" href="{{ wa }}" target="_blank" rel="noopener">{{ whatsapp() }} {{ t.projects.whatsapp }}</a>
+      <a class="btn btn-light" href="#enquire">{{ p.price_list_button }}</a>
+    </div>
+  </div>
+</section>
+
+<section class="container section narrow-wide">
+  <div class="prose">{{ p.intro|md }}</div>
+
+  <h2>{{ p.units_heading or t.projects.key_facts }}</h2>
+  <div class="table-wrap">
+    <table class="facts-table">
+      <thead><tr><th>{{ t.projects.unit }}</th><th>{{ t.projects.size }}</th><th>{{ t.projects.from_col }}</th></tr></thead>
+      <tbody>
+        {% for u in p.units %}<tr><td>{{ u.type }}</td><td>{{ u.size }}</td><td><strong>{{ u.from }}</strong></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if p.units_note %}<p class="source-note">{{ p.units_note }}</p>{% endif %}
+  <dl class="facts-row">
+    {% for f in p.facts %}<div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div>{% endfor %}
+  </dl>
+
+  {% if p.selling_points %}
+  <h2>{{ p.selling_points_heading }}</h2>
+  <div class="points">
+    {% for sp in p.selling_points %}
+    <div class="point"><h3>{{ sp.heading }}</h3>{{ sp.body|md }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if p.images and p.images.gallery %}
+  <div class="proj-gallery">
+    {% for img in p.images.gallery %}
+    {% set slot = img.rsplit('.', 1)[0] %}
+    <figure><img src="{{ p.images.dir }}/{{ img }}" alt="{{ fill(p.images.alt, slot=slot) }}"
+                 loading="lazy" width="800" height="600" onerror="this.closest('figure').remove()"></figure>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if p.locations %}
+  <h2>{{ p.location_heading }}</h2>
+  <p class="muted">{{ p.location_label }}</p>
+  <div class="table-wrap">
+    <table class="facts-table drive-table">
+      <tbody>{% for l in p.locations %}<tr><td>{{ l.place }}</td><td>{{ l.time }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if guide %}
+  <p class="area-link"><a href="/areas/{{ guide.slug }}">{{ fill(t.projects.area_guide, area=guide.area) }} →</a></p>
+  {% endif %}
+
+  {% if p.faq %}
+  <h2>{{ t.projects.faq }}</h2>
+  <div class="faq">
+    {% for f in p.faq %}<details><summary>{{ f.q }}</summary><p>{{ f.a }}</p></details>{% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="enquire" id="enquire">
+    <h2>{{ p.form.heading }}</h2>
+    <p class="muted">{{ p.form.intro }}</p>
+    {% if sent %}<p class="success">{{ t.projects.form_sent }}</p>{% endif %}
+    <form action="/inquire" method="post" class="form form-grid">
+      <input type="hidden" name="project" value="{{ p.slug }}">
+      <div class="hp" aria-hidden="true">
+        <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+      <label>{{ t.projects.form_name }} <input type="text" name="name" autocomplete="name" required></label>
+      <label>{{ t.projects.form_phone }} <input type="tel" name="phone" autocomplete="tel" required></label>
+      <label>{{ t.projects.form_email }} <input type="email" name="email" autocomplete="email" required></label>
+      <label>{{ t.projects.form_unit }}
+        <select name="unit_type"><option value="">{{ t.projects.choose }}</option>
+          {% for u in p.form.unit_types %}<option>{{ u }}</option>{% endfor %}</select>
+      </label>
+      <label>{{ t.projects.form_budget }}
+        <select name="budget"><option value="">{{ t.projects.choose }}</option>
+          {% for b in p.form.budgets %}<option>{{ b }}</option>{% endfor %}</select>
+      </label>
+      <label>{{ t.projects.form_purpose }}
+        <select name="purpose"><option value="">{{ t.projects.choose }}</option>
+          {% for x in p.form.purposes %}<option>{{ x }}</option>{% endfor %}</select>
+      </label>
+      <label class="span-2">{{ t.projects.form_message }} <textarea name="message" rows="3"></textarea></label>
+      <div class="span-2 form-actions">
+        <button type="submit" class="btn">{{ t.projects.form_submit }}</button>
+        <a class="btn btn-wa-solid" href="{{ wa }}" target="_blank" rel="noopener">{{ whatsapp() }} {{ t.projects.whatsapp }}</a>
+      </div>
+    </form>
+  </div>
+
+  {% if p.sources %}
+  <h2 class="sources-h">{{ t.projects.sources }}</h2>
+  <ol class="sources">
+    {% for src in p.sources %}
+    <li>{% if src.url %}<a href="{{ src.url }}" target="_blank" rel="noopener">{{ src.title }}</a>{% else %}{{ src.title }}{% endif %} — {{ src.publisher }}, {{ src.date }}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+</section>
+{% endblock %}

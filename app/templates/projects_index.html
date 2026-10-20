@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_card.html" import project_card %}
+
+{% block content %}
+<section class="container section">
+  <h1>{{ t.projects.h1 }}</h1>
+  <p class="lead">{{ t.projects.intro }}</p>
+  {% if grouped %}
+    {% for emirate, items in grouped|dictsort %}
+    <h2>{{ emirate }}</h2>
+    <div class="grid grid-launch">{% for p in items %}{{ project_card(p, t) }}{% endfor %}</div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <p class="muted">{{ t.projects.empty }}</p>
+      <p><a href="/listings">{{ t.not_found.listings }}</a> · <a href="/areas">{{ t.not_found.areas }}</a></p>
+    </div>
+  {% endif %}
+  <p class="related-line"><a href="/areas">{{ t.footer.areas }}</a> · <a href="/insights">{{ t.footer.insights }}</a> · <a href="/listings">{{ t.not_found.listings }}</a></p>
+</section>
+{% endblock %}

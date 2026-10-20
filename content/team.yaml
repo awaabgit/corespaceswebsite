@@ -1,0 +1,42 @@
+# The team page (/team). Adding a person = one entry below.
+#
+#   name      shown on the card; the anchor id is made from it (#najam-mir)
+#   role      job title
+#   languages list, e.g. [English, Arabic, Urdu] — shown when set
+#   brn       broker registration number — shown only when set
+#   photo     put the file in public/static/team/ and give the path here;
+#             leave blank and the card shows initials instead
+#
+# Still to add once surnames and roles are confirmed: Emmanuel, Mohamed (a
+# second, different person from Mohammed Meghani) and Taiba.
+
+members:
+  - name: Najam Mir
+    role: CEO
+    languages: []
+    brn: ""
+    photo: ""
+
+  - name: Mahmoud Afifi
+    role: Manager
+    languages: []
+    brn: ""
+    photo: ""
+
+  - name: Francis Ahovi
+    role: Agent
+    languages: []
+    brn: ""
+    photo: ""
+
+  - name: Kassim Mumba
+    role: Agent
+    languages: []
+    brn: ""
+    photo: ""
+
+  - name: Mohammed Meghani
+    role: Agent
+    languages: []
+    brn: ""
+    photo: ""

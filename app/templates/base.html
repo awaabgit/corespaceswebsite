@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ company.name }}{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}{{ company.name }} — {{ company.tagline }}{% endblock %}">
+  {# Titles, descriptions, canonicals and structured data all come from the
+     route via _render() in main.py — see app/seo.py. Nothing SEO-related is
+     hand-written in templates any more. #}
+  <title>{{ page.title or company.name }}</title>
+  <meta name="description" content="{{ page.description or company.tagline }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,33 +17,55 @@
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#0A463A">
 
-  {# ---- SEO / social sharing ---- #}
-  <link rel="canonical" href="{{ canonical_url(request) }}">
-  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ page.canonical_abs }}">
+  <meta name="robots" content="{{ 'noindex, follow' if page.noindex else 'index, follow' }}">
+  {% if cfg.GSC_VERIFICATION %}<meta name="google-site-verification" content="{{ cfg.GSC_VERIFICATION }}">{% endif %}
   <meta property="og:site_name" content="{{ company.name }}">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
-  <meta property="og:description" content="{{ self.meta_description() }}">
-  <meta property="og:url" content="{{ canonical_url(request) }}">
-  <meta property="og:image" content="{% block og_image %}{{ base_url(request) }}/static/hero/hero1.jpg{% endblock %}">
+  <meta property="og:type" content="{{ page.og_type or 'website' }}">
+  <meta property="og:title" content="{{ page.title or company.name }}">
+  <meta property="og:description" content="{{ page.description or company.tagline }}">
+  <meta property="og:url" content="{{ page.canonical_abs }}">
+  <meta property="og:image" content="{{ page.og_image_abs }}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ self.title() }}">
-  <meta name="twitter:description" content="{{ self.meta_description() }}">
-  <meta name="twitter:image" content="{{ self.og_image() }}">
+  <meta name="twitter:title" content="{{ page.title or company.name }}">
+  <meta name="twitter:description" content="{{ page.description or company.tagline }}">
+  <meta name="twitter:image" content="{{ page.og_image_abs }}">
 
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "RealEstateAgent",
-    "name": "{{ company.name }}",
-    "description": "{{ company.tagline }}",
-    "url": "{{ base_url(request) }}",
-    "telephone": "{{ company.phone }}",
-    "email": "{{ company.email }}",
-    "address": {"@type": "PostalAddress", "addressLocality": "Dubai", "addressCountry": "AE"},
-    "areaServed": "Dubai, United Arab Emirates"
-  }
+  {% for block in page.ld_json %}
+  <script type="application/ld+json">{{ block|safe }}</script>
+  {% endfor %}
+
+  {% if cfg.GA4_ID %}
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ cfg.GA4_ID|urlencode }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', {{ cfg.GA4_ID|tojson }});
+    // The three things we want to count: someone tapping Call, someone tapping
+    // WhatsApp, and an enquiry form being sent.
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a');
+      if (!a) return;
+      var h = a.getAttribute('href') || '';
+      if (h.indexOf('tel:') === 0) {
+        gtag('event', 'call_click', {page_path: location.pathname, transport_type: 'beacon'});
+      } else if (h.indexOf('wa.me') > -1) {
+        gtag('event', 'whatsapp_click', {page_path: location.pathname, transport_type: 'beacon'});
+      }
+    });
+    document.addEventListener('submit', function (e) {
+      var f = e.target;
+      if ((f.getAttribute('action') || '') !== '/inquire') return;
+      var proj = f.querySelector('[name=project]');
+      gtag('event', 'generate_lead', {
+        project: proj ? proj.value : '',
+        page_path: location.pathname,
+        transport_type: 'beacon'
+      });
+    });
   </script>
+  {% endif %}
 
   <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_v }}">
   {% block head_extra %}{% endblock %}
@@ -49,7 +74,7 @@
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="/">
-        <img class="brand-logo" src="/static/core-spaces-logo.jpg" alt="{{ company.name }} logo">
+        <img class="brand-logo" src="/static/core-spaces-logo.jpg" alt="{{ company.name }} logo" width="40" height="40">
         <span class="brand-name">{{ company.name }}</span>
       </a>
       <button class="nav-toggle" id="navToggle" type="button"
@@ -57,15 +82,27 @@
         <span></span><span></span><span></span>
       </button>
       <nav class="site-nav" id="siteNav" aria-label="Primary">
-        <a href="/listings?type=sale">Buy</a>
-        <a href="/listings?type=rent">Rent</a>
-        <a href="/about">About</a>
-        <a href="/contact" class="nav-cta">Contact</a>
+        <a href="/listings?type=sale">{{ t.nav.buy }}</a>
+        <a href="/listings?type=rent">{{ t.nav.rent }}</a>
+        <a href="/projects">{{ t.nav.projects }}</a>
+        <a href="/areas">{{ t.nav.areas }}</a>
+        <a href="/about">{{ t.nav.about }}</a>
+        <a href="/contact" class="nav-cta">{{ t.nav.contact }}</a>
       </nav>
     </div>
   </header>
 
   <main>
+    {% if page.crumbs and page.crumbs|length > 1 %}
+    <nav class="container crumbs" aria-label="Breadcrumb">
+      <ol>
+        {% for name, path in page.crumbs %}
+          {% if loop.last %}<li aria-current="page">{{ name }}</li>
+          {% else %}<li><a href="{{ path }}">{{ name }}</a></li>{% endif %}
+        {% endfor %}
+      </ol>
+    </nav>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
@@ -74,22 +111,33 @@
       <div class="footer-brand">
         <span class="brand-name">{{ company.name }}</span>
         <p class="muted">{{ company.tagline }}</p>
+        <p class="footer-legal">
+          {{ cfg.LEGAL_NAME }}{% if cfg.ORN %}<br>{{ t.footer.orn }} {{ cfg.ORN }}{% endif %}<br>
+          {{ cfg.STREET_ADDRESS }}, {{ cfg.CITY }}
+        </p>
       </div>
       <div class="footer-col">
-        <h4>Browse</h4>
-        <a href="/listings?type=sale">For sale</a>
-        <a href="/listings?type=rent">For rent</a>
-        <a href="/about">About us</a>
+        <h4>{{ t.footer.browse }}</h4>
+        <a href="/listings?type=sale">{{ t.footer.for_sale }}</a>
+        <a href="/listings?type=rent">{{ t.footer.for_rent }}</a>
+        <a href="/projects">{{ t.footer.projects }}</a>
+        <a href="/areas">{{ t.footer.areas }}</a>
+        <a href="/insights">{{ t.footer.insights }}</a>
       </div>
       <div class="footer-col">
-        <h4>Get in touch</h4>
-        <a href="tel:{{ company.phone }}">{{ company.phone }}</a>
-        <a href="mailto:{{ company.email }}">{{ company.email }}</a>
-        <span class="muted">{{ company.address }}</span>
+        <h4>{{ t.footer.company }}</h4>
+        <a href="/about">{{ t.footer.about }}</a>
+        <a href="/team">{{ t.footer.team }}</a>
+        <a href="/contact">{{ t.footer.contact }}</a>
+      </div>
+      <div class="footer-col">
+        <h4>{{ t.footer.get_in_touch }}</h4>
+        <a href="tel:{{ cfg.BUSINESS_PHONE|replace(' ', '') }}">{{ cfg.BUSINESS_PHONE }}</a>
+        <a href="mailto:{{ cfg.BUSINESS_EMAIL }}">{{ cfg.BUSINESS_EMAIL }}</a>
       </div>
     </div>
     <div class="container footer-base">
-      <span class="muted">© {{ company.name }}. All rights reserved.</span>
+      <span class="muted">© {{ cfg.LEGAL_NAME }}. {{ t.footer.rights }}</span>
     </div>
   </footer>
   <script src="/static/js/site.js?v={{ asset_v }}" defer></script>

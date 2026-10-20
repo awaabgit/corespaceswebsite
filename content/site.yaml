@@ -1,0 +1,172 @@
+# Site-wide copy: page titles, descriptions, headings and button labels.
+# Kept out of the templates so the words can be edited (or translated into
+# Arabic later) without touching code.
+
+nav:
+  buy: Buy
+  rent: Rent
+  projects: New launches
+  areas: Areas
+  about: About
+  contact: Contact
+
+footer:
+  browse: Browse
+  for_sale: For sale
+  for_rent: For rent
+  projects: New launches
+  areas: Area guides
+  insights: Insights
+  company: Company
+  about: About us
+  team: Team
+  contact: Contact
+  get_in_touch: Get in touch
+  orn: "ORN"
+  rights: "All rights reserved."
+
+home:
+  title: "Property for Sale & Rent in Dubai & Sharjah | CORE Spaces"
+  meta_description: >-
+    Ready homes for sale and rent across Dubai and new beachfront launches in
+    Sharjah's Al Khan. Browse listings, new projects and area guides.
+  h1: "Property for sale and rent in Dubai and Sharjah"
+  sub: "Ready homes across Dubai and new beachfront launches in Sharjah's Al Khan."
+  search_placeholder: "City, community or building"
+  search_button: Search
+  tab_buy: Buy
+  tab_rent: Rent
+  launches_heading: "New launches"
+  launches_more: "All new launches →"
+  featured_heading: "Featured listings"
+  featured_more: "View all →"
+  areas_heading: "Area guides"
+  areas_more: "All area guides →"
+  insights_heading: "Latest insights"
+  insights_more: "All insights →"
+  sell_heading: "Thinking of selling or letting?"
+  sell_body: "Tell us about your property and we'll come back with a realistic valuation and a plan to move it."
+  sell_button: "Talk to us"
+
+about:
+  title: "About CORE Spaces | Real Estate Brokerage in Business Bay, Dubai"
+  meta_description: >-
+    CORE Spaces is a real estate brokerage in Business Bay, Dubai, handling sales
+    and lettings across Dubai and new beachfront launches in Sharjah.
+  cover_heading: "What we cover"
+  cover_body: |
+    Sales and lettings across Dubai, from Downtown, Business Bay and Dubai
+    Marina to JVC and DAMAC Lagoons, plus new beachfront launches on Sharjah's
+    Al Khan waterfront. Ready and off-plan. If you're selling or letting, we'll
+    give you a valuation we can defend and a plan to move it.
+  office_heading: "Our office"
+  hours_label: "Hours"
+  hours: "Monday–Saturday, 10:00–19:00"
+  map_query: "The Regal Tower, Business Bay, Dubai"
+  map_title: "Map showing The Regal Tower, Business Bay"
+  related_heading: "Explore"
+
+contact:
+  title: "Contact CORE Spaces | Business Bay, Dubai"
+  meta_description: >-
+    Call, email or message CORE Spaces in Business Bay, Dubai, about buying,
+    selling, renting or letting property in Dubai and Sharjah.
+
+listings:
+  title_all: "Property for Sale & Rent in the UAE | CORE Spaces"
+  title_sale: "Properties for Sale in the UAE | CORE Spaces"
+  title_rent: "Properties for Rent in the UAE | CORE Spaces"
+  desc_all: "Apartments, townhouses and villas for sale and rent in Dubai and Sharjah, with photos, prices and the agent's direct number."
+  desc_sale: "Apartments, townhouses and villas for sale in Dubai and Sharjah, with photos, floor areas, prices and the agent's direct number."
+  desc_rent: "Apartments, townhouses and villas for rent in Dubai and Sharjah, with photos, floor areas, annual rents and the agent's direct number."
+  h1_all: "Property for sale and rent"
+  h1_sale: "Property for sale"
+  h1_rent: "Property for rent"
+
+projects:
+  title: "New Property Launches in Dubai & Sharjah | CORE Spaces"
+  meta_description: >-
+    Current off-plan launches we're selling in Dubai and Sharjah, with starting
+    prices, unit types and the developer's location details.
+  h1: "New launches"
+  intro: "Off-plan projects we're selling now. Each page has the developer's prices, unit sizes and drive times, and a form to get the full price list."
+  empty: "No launches open right now. Browse our ready homes or the area guides instead."
+  from: "From"
+  view: "View project →"
+  closed_banner: "This launch has closed. Here's what's available now in {area}:"
+  closed_guide: "Read the {area} area guide →"
+  key_facts: "Key facts"
+  unit: Unit
+  size: Size
+  from_col: From
+  faq: "Frequently asked questions"
+  area_guide: "{area} area guide"
+  sources: Sources
+  whatsapp: WhatsApp
+  form_name: Name
+  form_phone: Phone
+  form_email: Email
+  form_unit: "Unit type"
+  form_budget: Budget
+  form_purpose: "Buying to"
+  form_message: "Anything else?"
+  form_submit: "Send me the price list"
+  form_sent: "Thanks — we'll be in touch shortly with the price list."
+  choose: "Choose…"
+
+areas:
+  title: "Dubai & Sharjah Area Guides for Buyers | CORE Spaces"
+  meta_description: >-
+    Area guides for buyers in Dubai and Sharjah: where each community is,
+    what it's like to live there, rents, recent transactions and what's for sale.
+  h1: "Area guides"
+  intro: "Where each community is, what it's like to live there, and what's for sale — with every figure linked to its source."
+  h1_pattern: "{area}, {emirate}: area guide for buyers"
+  updated: "Last updated {date}"
+  live_projects: "New launches in {area}"
+  our_listings: "Our listings in {area}"
+  related: "Related insights"
+  view: "Read the guide →"
+
+insights:
+  title: "Property Insights for Dubai & Sharjah Buyers | CORE Spaces"
+  meta_description: >-
+    Plain-English guides to buying property in Dubai and Sharjah: ownership
+    rules, payment plans, fees and the buying process, with sources.
+  h1: Insights
+  intro: "Plain-English guides to buying property in Dubai and Sharjah, with every figure linked to its source."
+  by: By
+  published: "Published {date}"
+  updated: "Updated {date}"
+  read: "Read →"
+  related_areas: "Related area guides"
+  related_articles: "More insights"
+
+team:
+  title: "Our Team | CORE Spaces Real Estate, Business Bay"
+  meta_description: >-
+    Meet the CORE Spaces team in Business Bay, Dubai: the people who handle our
+    sales, lettings and new launches across Dubai and Sharjah.
+  h1: "Our team"
+  intro: "The people who'll handle your sale, purchase or letting."
+  languages: Languages
+  brn: BRN
+
+breadcrumbs:
+  home: Home
+  listings: Listings
+  projects: "New launches"
+  areas: "Area guides"
+  insights: Insights
+  team: Team
+  about: About
+  contact: Contact
+
+not_found:
+  title: "Page Not Found | CORE Spaces"
+  h1: "We couldn't find that page"
+  body: "It may have moved, or a listing may have been sold or let. Try one of these instead:"
+  listings: "Browse listings"
+  areas: "Area guides"
+  projects: "New launches"
+  insights: Insights

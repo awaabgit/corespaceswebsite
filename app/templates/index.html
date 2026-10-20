@@ -1,10 +1,9 @@
 {% extends "base.html" %}
-{% from "_card.html" import listing_card %}
-{% block title %}{{ company.name }} — {{ company.tagline }}{% endblock %}
+{% from "_card.html" import listing_card, project_card, area_tile, insight_card %}
 
 {% block content %}
 <section class="hero has-slider">
-  {# Drop a file at app/static/hero/hero.mp4 and it plays instead of the image
+  {# Drop a file at public/static/hero/hero.mp4 and it plays instead of the image
      slideshow. No code change needed — the images stay as the fallback. #}
   <video class="hero-video" id="heroVideo" autoplay muted loop playsinline
          poster="/static/hero/hero-poster.jpg" preload="metadata">
@@ -17,8 +16,8 @@
     <div class="hero-slide" style="background-image:url('/static/hero/hero4.jpg')"></div>
   </div>
   <div class="hero-inner">
-    <h1 class="hero-anim">Find your next home in Dubai</h1>
-    <p class="hero-sub hero-anim">A hand-picked portfolio to buy and rent — brokered by people who pick up the phone.</p>
+    <h1 class="hero-anim">{{ t.home.h1 }}</h1>
+    <p class="hero-sub hero-anim">{{ t.home.sub }}</p>
     {# The Buy/Rent tabs are part of the search form, not links away from it —
        clicking one sets the hidden `type` field so the search box keeps its text.
        Without JS they still work as plain links (progressive enhancement). #}
@@ -26,34 +25,70 @@
       <input type="hidden" name="type" id="searchType" value="sale">
       <div class="search-tabs" id="searchTabs">
         <span class="tab-slider"></span>
-        <a href="/listings?type=sale" class="on" data-type="sale">Buy</a>
-        <a href="/listings?type=rent" data-type="rent">Rent</a>
+        <a href="/listings?type=sale" class="on" data-type="sale">{{ t.home.tab_buy }}</a>
+        <a href="/listings?type=rent" data-type="rent">{{ t.home.tab_rent }}</a>
       </div>
       <div class="search-main">
-        <input type="text" name="q" placeholder="City, community or building" aria-label="Search">
-        <button type="submit">Search</button>
+        <input type="text" name="q" placeholder="{{ t.home.search_placeholder }}" aria-label="{{ t.home.search_button }}">
+        <button type="submit">{{ t.home.search_button }}</button>
       </div>
     </form>
   </div>
 </section>
 
+{% if launches %}
 <section class="container section">
   <div class="section-head reveal">
-    <h2>Featured listings</h2>
-    <a class="link-more" href="/listings">View all →</a>
+    <h2>{{ t.home.launches_heading }}</h2>
+    <a class="link-more" href="/projects">{{ t.home.launches_more }}</a>
+  </div>
+  <div class="grid grid-launch">
+    {% for p in launches %}{{ project_card(p, t) }}{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="container section">
+  <div class="section-head reveal">
+    <h2>{{ t.home.featured_heading }}</h2>
+    <a class="link-more" href="/listings">{{ t.home.featured_more }}</a>
   </div>
   <div class="grid">
     {% for listing in featured %}{{ listing_card(listing) }}{% endfor %}
   </div>
 </section>
 
+{% if area_guides %}
+<section class="container section">
+  <div class="section-head reveal">
+    <h2>{{ t.home.areas_heading }}</h2>
+    <a class="link-more" href="/areas">{{ t.home.areas_more }}</a>
+  </div>
+  <div class="tiles">
+    {% for a in area_guides %}{{ area_tile(a) }}{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if latest_insights %}
+<section class="container section">
+  <div class="section-head reveal">
+    <h2>{{ t.home.insights_heading }}</h2>
+    <a class="link-more" href="/insights">{{ t.home.insights_more }}</a>
+  </div>
+  <div class="grid">
+    {% for art in latest_insights %}{{ insight_card(art, t) }}{% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="band reveal">
   <div class="band-inner">
     <div>
-      <h2>Thinking of selling or letting?</h2>
-      <p class="muted">Tell us about your property and we'll come back with a realistic valuation and a plan to move it.</p>
+      <h2>{{ t.home.sell_heading }}</h2>
+      <p class="muted">{{ t.home.sell_body }}</p>
     </div>
-    <a class="btn" href="/contact">Talk to us</a>
+    <a class="btn" href="/contact">{{ t.home.sell_button }}</a>
   </div>
 </section>
 {% endblock %}

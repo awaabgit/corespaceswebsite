@@ -96,8 +96,32 @@ def _area(listing: dict[str, Any]) -> str:
     return tidy_name(listing.get("community") or listing.get("location") or "")
 
 
+# Words that mark a CRM title as a sales headline ("Exceptional 3 Bedroom
+# Apartment for Sale in …") rather than the building's name.
+_HEADLINE = re.compile(
+    r"\b(\d+\s*-?\s*(bed|bedroom|br|bhk)s?|bedrooms?|studio|apartment|villa|"
+    r"townhouse|penthouse|duplex|offices?|for (sale|rent)|luxury|exceptional|"
+    r"stunning|views?|brand new|furnished|maid)\b", re.I)
+
+
 def _building(listing: dict[str, Any]) -> str:
-    return tidy_name(listing.get("title") or "")
+    """The building's name — or '' when the CRM title is a sales headline, in
+    which case the title falls back to the community name instead."""
+    title = str(listing.get("title") or "").strip()
+    if not title or _HEADLINE.search(title) or len(title.split()) > 6:
+        return ""
+    return tidy_name(title)
+
+
+def _what(listing: dict[str, Any]) -> str:
+    """'2 Bed Apartment', 'Studio Apartment', '4 Bed Villa', 'Office'."""
+    kind = _kind(listing)
+    if kind in ("Office", "Plot"):
+        return kind
+    label = beds_label(listing.get("beds"))
+    if label == "Studio" and kind != "Apartment":
+        return kind          # a 0-bed villa is a data gap, not a studio villa
+    return f"{label} {kind}"
 
 
 def _where(listing: dict[str, Any]) -> str:
@@ -124,7 +148,7 @@ def listing_title(listing: dict[str, Any]) -> str:
     """'2 Bed Apartment for Sale in Amna Tower, Business Bay | AED 3.5M'"""
     deal = "Rent" if listing.get("type") == "rent" else "Sale"
     where = _where(listing)
-    head = f"{beds_label(listing.get('beds'))} {_kind(listing)} for {deal} in {where}"
+    head = f"{_what(listing)} for {deal} in {where}"
     price = short_price(listing.get("price"), listing.get("type", "sale"),
                         listing.get("currency", "AED"))
     full = f"{head} | {price}" if price else head
@@ -138,13 +162,12 @@ def listing_h1(listing: dict[str, Any]) -> str:
     """Same shape as the title, without the price — the visible heading."""
     deal = "Rent" if listing.get("type") == "rent" else "Sale"
     where = _where(listing)
-    return f"{beds_label(listing.get('beds'))} {_kind(listing)} for {deal} in {where}"
+    return f"{_what(listing)} for {deal} in {where}"
 
 
 def listing_description(listing: dict[str, Any]) -> str:
-    label = beds_label(listing.get("beds"))
-    label = label if label == "Studio" else label.lower()
-    bits = [f"{label} {_kind(listing).lower()}"]
+    what = _what(listing)
+    bits = [what if what.startswith("Studio") else what.lower()]
     try:
         sqft = float(listing.get("area_sqft") or 0)
         if sqft > 0:
@@ -161,6 +184,13 @@ def listing_description(listing: dict[str, Any]) -> str:
     tail = f". {price}." if price else "."
     return clamp(f"{lead}{tail} View photos, floor area and price, and arrange a viewing "
                  f"with {config.BRAND_NAME}.", 155)
+
+
+def listing_alt(listing: dict[str, Any], n: int = 1) -> str:
+    """'2 bed apartment in Amna Tower, Business Bay - photo 1'"""
+    what = _what(listing)
+    what = what if what.startswith("Studio") else what.lower()
+    return f"{what} in {_where(listing)} - photo {n}"
 
 
 # ------------------------------------------------------------- structured data

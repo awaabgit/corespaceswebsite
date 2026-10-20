@@ -1,0 +1,18 @@
+# Ping IndexNow (Bing, Yandex, …) with the sitemap after each successful
+# PRODUCTION deploy. Vercel reports deployments back to GitHub, which is what
+# triggers this — preview deployments are ignored.
+name: IndexNow ping
+
+on:
+  deployment_status:
+
+jobs:
+  ping:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Production'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping IndexNow
+        run: python3 scripts/indexnow_ping.py

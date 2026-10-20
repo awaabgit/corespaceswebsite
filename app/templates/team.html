@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="container section">
+  <h1>{{ t.team.h1 }}</h1>
+  <p class="lead">{{ t.team.intro }}</p>
+  <div class="team-grid">
+    {% for m in members %}
+    <div class="member" id="{{ m.slug }}">
+      <div class="member-photo">
+        {% if m.photo %}<img src="{{ m.photo }}" alt="{{ m.name }}, {{ m.role }}" width="320" height="320" loading="lazy" onerror="this.remove()">{% endif %}
+        <span class="avatar" aria-hidden="true">{{ m.name.split()|map('first')|join }}</span>
+      </div>
+      <h2>{{ m.name }}</h2>
+      <p class="member-role">{{ m.role }}</p>
+      {% if m.languages %}<p class="muted">{{ t.team.languages }}: {{ m.languages|join(', ') }}</p>{% endif %}
+      {% if m.brn %}<p class="muted">{{ t.team.brn }} {{ m.brn }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <p class="related-line"><a href="/about">{{ t.footer.about }}</a> · <a href="/contact">{{ t.footer.contact }}</a> · <a href="/listings">{{ t.not_found.listings }}</a></p>
+</section>
+{% endblock %}

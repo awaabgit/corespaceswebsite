@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_card.html" import area_tile, insight_card %}
+
+{% block content %}
+<article class="container section narrow-wide">
+  <p class="eyebrow">{{ t.breadcrumbs.insights }}</p>
+  <h1>{{ art.h1 }}</h1>
+  <p class="byline muted">
+    {% if author %}{{ t.insights.by }} <a href="{{ author.url }}">{{ author.name }}</a>, {{ author.role }} · {% endif %}
+    {{ fill(t.insights.published, date=fmt_date(art.published)) }}
+    {% if art.updated and art.updated != art.published %} · {{ fill(t.insights.updated, date=fmt_date(art.updated)) }}{% endif %}
+  </p>
+
+  <div class="prose">
+    {% for sec in art.sections %}
+    <h2>{{ sec.heading }}</h2>
+    {{ sec.body|md }}
+    {% endfor %}
+  </div>
+
+  {% if art.faq %}
+  <h2>{{ t.projects.faq }}</h2>
+  <div class="faq">
+    {% for f in art.faq %}<details><summary>{{ f.q }}</summary><p>{{ f.a }}</p></details>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if art.sources %}
+  <h2 class="sources-h">{{ t.projects.sources }}</h2>
+  <ol class="sources">
+    {% for src in art.sources %}
+    <li>{% if src.url %}<a href="{{ src.url }}" target="_blank" rel="noopener">{{ src.title }}</a>{% else %}{{ src.title }}{% endif %} — {{ src.publisher }}, {{ src.date }}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  {% if author %}
+  <aside class="author-box">
+    <div class="avatar" aria-hidden="true">{{ author.name.split()|map('first')|join }}</div>
+    <div>
+      <strong><a href="{{ author.url }}">{{ author.name }}</a></strong>
+      <p class="muted">{{ author.role }}, {{ company.name }}</p>
+    </div>
+  </aside>
+  {% endif %}
+
+  {% if related_areas %}
+  <h2>{{ t.insights.related_areas }}</h2>
+  <div class="tiles">{% for a in related_areas %}{{ area_tile(a) }}{% endfor %}</div>
+  {% endif %}
+
+  {% if more %}
+  <h2>{{ t.insights.related_articles }}</h2>
+  <div class="grid">{% for x in more %}{{ insight_card(x, t) }}{% endfor %}</div>
+  {% endif %}
+
+  <p class="related-line"><a href="/insights">{{ t.footer.insights }}</a> · <a href="/areas">{{ t.footer.areas }}</a> · <a href="/contact">{{ t.footer.contact }}</a></p>
+</article>
+{% endblock %}

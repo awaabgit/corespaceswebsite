@@ -18,11 +18,13 @@ import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import config, data, kpi, referrals
+from . import config, content, data, kpi, prose, referrals, seo
 
 BASE_DIR = Path(__file__).resolve().parent
 # Static assets live in public/ at the project root so a CDN can serve them
@@ -135,6 +137,39 @@ templates.env.globals.update(
     mode=config.mode,
 )
 
+templates.env.globals.update(cfg=config, seo=seo, fill=content.fill,
+                             fmt_date=content.fmt_date)
+templates.env.filters["md"] = prose.render
+
+
+def _render(request: Request, name: str, page: dict, status_code: int = 200, **ctx):
+    """Every public page goes through here, so every page gets the same SEO
+    treatment: its own title and description, a canonical URL, an Open Graph
+    image, and JSON-LD built by seo.py — the organisation, the breadcrumb trail
+    and whatever the page adds. Nothing is hand-written in a template."""
+    base = _base_url(request)
+    page = dict(page)
+    crumbs = page.get("crumbs") or []
+    nodes = [seo.organisation(base)]
+    if crumbs:
+        nodes.append(seo.breadcrumbs(base, crumbs))
+    nodes += [n for n in (page.get("ld") or []) if n]
+    page["ld_json"] = [seo.render(n) for n in nodes]
+    og = page.get("og_image") or "/static/hero/hero1.jpg"
+    page["og_image_abs"] = og if str(og).startswith("http") else f"{base}{og}"
+    page["canonical_abs"] = (f"{base}{page['canonical']}" if page.get("canonical")
+                             else _canonical_url(request))
+    return templates.TemplateResponse(
+        request, name, {"page": page, "t": content.site(), **ctx}, status_code=status_code)
+
+
+def _not_found(request: Request):
+    t = content.site()
+    return _render(request, "not_found.html", {
+        "title": t.not_found.title, "description": t.not_found.body,
+        "crumbs": [(t.breadcrumbs.home, "/")], "noindex": True,
+    }, status_code=404)
+
 
 # ------------------------------------------------------------- edge caching
 # On a serverless host each request may land on a fresh instance, so the
@@ -169,9 +204,14 @@ async def cache_headers(request: Request, call_next):
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse(
-        request, "index.html", {"featured": data.get_featured(limit=3)}
-    )
+    t = content.site()
+    return _render(request, "index.html", {
+        "title": t.home.title, "description": t.home.meta_description,
+        "canonical": "/", "crumbs": [(t.breadcrumbs.home, "/")],
+    }, featured=data.get_featured(limit=3),
+        launches=content.projects("live"),          # the strip hides itself when empty
+        area_guides=content.areas(),
+        latest_insights=content.insights()[:3])
 
 
 @app.get("/listings", response_class=HTMLResponse)
@@ -182,38 +222,211 @@ def listings(request: Request, type: str | None = None, q: str | None = None,
     rows = data.get_listings(listing_type=type, search=q, beds=beds,
                              max_price=max_price, baths=baths, min_sqft=min_sqft,
                              min_price=min_price, status=status)
-    return templates.TemplateResponse(
-        request,
-        "listings.html",
-        {"listings": rows, "active_type": type or "all", "q": q or "",
-         "beds": beds or "", "max_price": max_price or "",
-         "baths": baths or "", "min_sqft": min_sqft or "",
-         "min_price": min_price or "", "status": status or ""},
-    )
+    t = content.site()
+    kind = type if type in ("sale", "rent") else "all"
+    # Every filtered or searched variant points search engines at the plain
+    # sale / rent / all URL, so a hundred filter combinations don't compete
+    # with each other as near-duplicate pages.
+    canonical = f"/listings?type={kind}" if kind != "all" else "/listings"
+    crumbs = [(t.breadcrumbs.home, "/"), (t.breadcrumbs.listings, "/listings")]
+    if kind != "all":
+        crumbs.append((t.listings.get(f"h1_{kind}"), canonical))
+    return _render(request, "listings.html", {
+        "title": t.listings.get(f"title_{kind}"),
+        "description": t.listings.get(f"desc_{kind}"),
+        "h1": t.listings.get(f"h1_{kind}"),
+        "canonical": canonical, "crumbs": crumbs,
+    }, listings=rows, active_type=type or "all", q=q or "",
+        beds=beds or "", max_price=max_price or "", baths=baths or "",
+        min_sqft=min_sqft or "", min_price=min_price or "", status=status or "")
 
 
 @app.get("/listings/{slug}", response_class=HTMLResponse)
 def listing_detail(request: Request, slug: str):
     listing = data.get_listing(slug)
     if not listing:
-        return templates.TemplateResponse(
-            request, "not_found.html", status_code=404
-        )
-    return templates.TemplateResponse(
-        request, "listing_detail.html", {"listing": listing}
-    )
+        return _not_found(request)
+    t = content.site()
+    base = _base_url(request)
+    path = f"/listings/{slug}"
+    h1 = seo.listing_h1(listing)
+    deal = "/listings?type=rent" if listing.get("type") == "rent" else "/listings?type=sale"
+    first = (listing.get("images") or [""])[0]
+    return _render(request, "listing_detail.html", {
+        "title": seo.listing_title(listing),
+        "description": seo.listing_description(listing),
+        "canonical": path, "og_image": first or None,
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.listings, deal), (h1, path)],
+        "ld": [seo.listing_node(listing, base, f"{base}{path}")],
+    }, listing=listing, h1=h1, area_guide=content.area_for_listing(listing))
 
 
 @app.get("/about", response_class=HTMLResponse)
 def about(request: Request):
-    return templates.TemplateResponse(request, "about.html")
+    t = content.site()
+    return _render(request, "about.html", {
+        "title": t.about.title, "description": t.about.meta_description,
+        "canonical": "/about",
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.about, "/about")],
+    }, area_guides=content.areas())
 
 
 @app.get("/contact", response_class=HTMLResponse)
 def contact(request: Request, sent: int = 0):
-    return templates.TemplateResponse(
-        request, "contact.html", {"sent": bool(sent)}
-    )
+    t = content.site()
+    return _render(request, "contact.html", {
+        "title": t.contact.title, "description": t.contact.meta_description,
+        "canonical": "/contact",
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.contact, "/contact")],
+    }, sent=bool(sent))
+
+
+# -------------------------------------------------------------- new launches
+@app.get("/projects", response_class=HTMLResponse)
+def projects_index(request: Request):
+    t = content.site()
+    grouped: dict[str, list] = {}
+    for proj in content.projects("live"):        # closed launches are not listed
+        grouped.setdefault(proj.get("emirate") or "Other", []).append(proj)
+    return _render(request, "projects_index.html", {
+        "title": t.projects.title, "description": t.projects.meta_description,
+        "canonical": "/projects",
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.projects, "/projects")],
+    }, grouped=grouped)
+
+
+@app.get("/projects/{slug}", response_class=HTMLResponse)
+def project_page(request: Request, slug: str, sent: int = 0):
+    proj = content.get("projects", slug)
+    if not proj:
+        return _not_found(request)
+    t = content.site()
+    path = f"/projects/{slug}"
+    closed = (proj.get("status") or "live").lower() == "closed"
+    guide = content.get("areas", proj.get("area_slug") or "")
+
+    alt_projects, alt_listings = [], []
+    if closed:
+        # A closed launch keeps its page — and whatever ranking it earned — but
+        # sends visitors to what's actually for sale nearby.
+        alt_projects = [x for x in content.live_projects_in(area_slug=proj.get("area_slug", ""))
+                        if x["slug"] != slug]
+        if not alt_projects:
+            alt_projects = [x for x in content.live_projects_in(emirate=proj.get("emirate", ""))
+                            if x["slug"] != slug]
+        rows = data.get_listings()
+        if guide:
+            alt_listings = content.listings_in_area(guide, rows, limit=3)
+        if not alt_listings:
+            em = str(proj.get("emirate", "")).lower()
+            alt_listings = [r for r in rows if em and em in
+                            f"{r.get('location', '')} {r.get('community', '')}".lower()][:3]
+
+    return _render(request, "project.html", {
+        "title": proj.get("title"), "description": proj.get("meta_description"),
+        "canonical": path, "og_image": proj.get("og_image"),
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.projects, "/projects"),
+                   (proj.get("name"), path)],
+        "ld": [seo.faq_node(proj.get("faq") or [])],
+    }, p=proj, closed=closed, guide=guide, sent=bool(sent),
+        alt_projects=alt_projects, alt_listings=alt_listings)
+
+
+# --------------------------------------------------------------- area guides
+@app.get("/areas", response_class=HTMLResponse)
+def areas_index(request: Request):
+    t = content.site()
+    return _render(request, "areas_index.html", {
+        "title": t.areas.title, "description": t.areas.meta_description,
+        "canonical": "/areas",
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.areas, "/areas")],
+    }, grouped=content.areas_by_emirate())
+
+
+@app.get("/areas/{slug}", response_class=HTMLResponse)
+def area_page(request: Request, slug: str):
+    area = content.get("areas", slug)
+    if not area:
+        return _not_found(request)
+    t = content.site()
+    path = f"/areas/{slug}"
+    return _render(request, "area.html", {
+        "title": area.get("title"), "description": area.get("meta_description"),
+        "canonical": path, "og_image": area.get("og_image"),
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.areas, "/areas"),
+                   (area.get("area"), path)],
+        "ld": [seo.faq_node(area.get("faq") or [])],
+    }, a=area,
+        h1=content.fill(t.areas.h1_pattern, area=area.get("area"), emirate=area.get("emirate")),
+        projects=content.live_projects_in(area_slug=slug),
+        area_listings=content.listings_in_area(area, data.get_listings()),
+        related=content.related_insights(slug))
+
+
+# ------------------------------------------------------------------ insights
+@app.get("/insights", response_class=HTMLResponse)
+def insights_index(request: Request):
+    t = content.site()
+    return _render(request, "insights_index.html", {
+        "title": t.insights.title, "description": t.insights.meta_description,
+        "canonical": "/insights",
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.insights, "/insights")],
+    }, articles=content.insights())
+
+
+@app.get("/insights/{slug}", response_class=HTMLResponse)
+def insight_page(request: Request, slug: str):
+    art = content.get("insights", slug)
+    if not art:
+        return _not_found(request)
+    t = content.site()
+    base = _base_url(request)
+    path = f"/insights/{slug}"
+    who = content.member(art.get("author") or "") or {}
+    author = ({"name": who.get("name"), "role": who.get("role"),
+               "url": f"/team#{who.get('slug')}"} if who else {})
+    return _render(request, "insight.html", {
+        "title": art.get("title"), "description": art.get("meta_description"),
+        "canonical": path, "og_image": art.get("og_image"),
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.insights, "/insights"),
+                   (art.get("h1"), path)],
+        "ld": [seo.article_node(dict(art, author=author), base, f"{base}{path}"),
+               seo.faq_node(art.get("faq") or [])],
+    }, art=art, author=author,
+        related_areas=[x for x in (content.get("areas", s) for s in art.get("areas") or []) if x],
+        more=[x for x in content.insights() if x["slug"] != slug][:3])
+
+
+# ---------------------------------------------------------------------- team
+@app.get("/team", response_class=HTMLResponse)
+def team_page(request: Request):
+    t = content.site()
+    base = _base_url(request)
+    members = content.team()
+    return _render(request, "team.html", {
+        "title": t.team.title, "description": t.team.meta_description,
+        "canonical": "/team",
+        "crumbs": [(t.breadcrumbs.home, "/"), (t.breadcrumbs.team, "/team")],
+        "ld": [{"@context": "https://schema.org",
+                "@graph": [seo.person_node(m, base) for m in members]}] if members else [],
+    }, members=members)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_errors(request: Request, exc: StarletteHTTPException):
+    """Unknown URLs get a real page with ways back into the site instead of
+    FastAPI's bare {"detail": "Not Found"}. Other errors keep the default."""
+    if exc.status_code == 404:
+        return _not_found(request)
+    return await http_exception_handler(request, exc)
+
+
+if config.INDEXNOW_KEY:
+    @app.get(f"/{config.INDEXNOW_KEY}.txt", include_in_schema=False)
+    def indexnow_key():
+        """IndexNow (Bing, Yandex) checks this file to confirm a ping really
+        came from this site. The key is public by design."""
+        return Response(config.INDEXNOW_KEY, media_type="text/plain")
 
 
 # ------------------------------------------------------------ form protection
@@ -249,10 +462,22 @@ def inquire(
     name: str = Form(...),
     email: str = Form(...),
     phone: str = Form(""),
-    message: str = Form(...),
+    message: str = Form(""),
     slug: str = Form(""),
+    project: str = Form(""),     # a /projects page form
+    unit_type: str = Form(""),
+    budget: str = Form(""),
+    purpose: str = Form(""),
     website: str = Form(""),   # honeypot — hidden from humans, bots fill it in
 ):
+    proj = content.get("projects", project.strip()) if project.strip() else None
+    # The project form's dropdowns go at the top of the lead so the agent sees
+    # what they're asking about before reading anything else.
+    details = [f"{label}: {value.strip()[:80]}"
+               for label, value in (("Unit type", unit_type), ("Budget", budget),
+                                    ("Purpose", purpose)) if value.strip()]
+    body = "\n".join(details + ([message.strip()] if message.strip() else [])) or "(no message)"
+
     # Bots get the same success page as everyone else; nothing is delivered.
     # Telling them they were caught just teaches them to try again.
     if website.strip():
@@ -261,14 +486,23 @@ def inquire(
         print(f"[inquire] rate limit hit for {_client_ip(request)} — dropped")
     else:
         listing = data.get_listing(slug) if slug else None
+        if listing is None and proj:
+            # Same path as a listing enquiry: the project name becomes the
+            # "[Re: …]" line in the Zoho lead's description.
+            listing = {"title": proj.get("name", ""), "slug": ""}
         try:
-            data.create_inquiry(name, email, phone, message, listing=listing,
+            data.create_inquiry(name, email, phone, body, listing=listing,
                                 referral=referrals.from_request(request))
         except Exception as exc:  # never 500 a contact form at the visitor
             print(f"[inquire] delivery failed: {exc}")
 
     # back to where they came from with a success flag
-    target = f"/listings/{slug}?sent=1" if slug else "/contact?sent=1"
+    if proj:
+        target = f"/projects/{proj['slug']}?sent=1#enquire"
+    elif slug:
+        target = f"/listings/{slug}?sent=1"
+    else:
+        target = "/contact?sent=1"
     return RedirectResponse(target, status_code=303)
 
 
@@ -524,14 +758,32 @@ def webmanifest():
 
 @app.get("/sitemap.xml")
 def sitemap(request: Request):
+    """Built from what actually exists: every content file adds its page, so
+    new area guides, insights and projects appear here with no code change, and
+    nothing is listed before it has a page. Closed projects stay in — their
+    pages stay up."""
+    from xml.sax.saxutils import escape
     base = _base_url(request)
-    urls = [f"{base}/", f"{base}/listings", f"{base}/about", f"{base}/contact"]
+    urls: list[tuple[str, str]] = [
+        ("/", ""), ("/listings", ""), ("/listings?type=sale", ""),
+        ("/listings?type=rent", ""), ("/about", ""), ("/contact", ""), ("/team", ""),
+    ]
+    for kind, index in (("projects", "/projects"), ("areas", "/areas"),
+                        ("insights", "/insights")):
+        items = content.all_of(kind)
+        if items:
+            urls.append((index, ""))
+        for item in items:
+            urls.append((f"{index}/{item['slug']}", str(item.get("updated") or "")[:10]))
     try:
         for row in data.get_listings():
-            urls.append(f"{base}/listings/{row['slug']}")
+            urls.append((f"/listings/{row['slug']}", ""))
     except Exception:
         pass
-    items = "".join(f"<url><loc>{u}</loc></url>" for u in urls)
+    items = "".join(
+        f"<url><loc>{escape(base + path)}</loc>"
+        + (f"<lastmod>{lastmod}</lastmod>" if lastmod else "") + "</url>"
+        for path, lastmod in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            f"{items}</urlset>")

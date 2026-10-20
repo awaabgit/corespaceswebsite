@@ -13,12 +13,14 @@ exactly right, since the files ship with the deploy.
 from __future__ import annotations
 
 import datetime as _dt
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-CONTENT_DIR = Path(__file__).resolve().parent.parent / "content"
+CONTENT_DIR = Path(os.getenv("CS_CONTENT_DIR") or
+                   Path(__file__).resolve().parent.parent / "content")
 
 _cache: dict[str, Any] = {}
 
@@ -62,6 +64,37 @@ def reload() -> None:
     _cache.clear()
 
 
+class Copy(dict):
+    """site.yaml as nested attribute access for templates: t.home.h1.
+    A missing key renders as '' rather than raising, so a half-translated
+    copy file degrades to a blank label instead of a 500."""
+
+    def __getattr__(self, key):
+        value = self.get(key, "")
+        return Copy(value) if isinstance(value, dict) else value
+
+
+def site() -> Copy:
+    if "site" not in _cache:
+        path = CONTENT_DIR / "site.yaml"
+        data = {}
+        if path.is_file():
+            try:
+                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError as exc:
+                print(f"[content] site.yaml: {exc}")
+        _cache["site"] = Copy(data)
+    return _cache["site"]
+
+
+def fill(pattern: str, **values) -> str:
+    """'{area} area guide' -> 'Al Khan area guide'. Unknown keys stay as-is."""
+    out = str(pattern or "")
+    for k, v in values.items():
+        out = out.replace("{" + k + "}", str(v))
+    return out
+
+
 # ------------------------------------------------------------------ projects
 def projects(status: str | None = None) -> list[dict[str, Any]]:
     """All projects, or just the live / closed ones.
@@ -97,6 +130,14 @@ def areas_by_emirate() -> dict[str, list[dict[str, Any]]]:
     for a in areas():
         grouped.setdefault(a.get("emirate", "Other"), []).append(a)
     return grouped
+
+
+def area_for_listing(listing: dict[str, Any]) -> dict[str, Any] | None:
+    """The area guide a listing belongs to, if we've written one."""
+    for a in areas():
+        if listings_in_area(a, [listing], limit=1):
+            return a
+    return None
 
 
 def listings_in_area(area: dict[str, Any], rows: list[dict[str, Any]],

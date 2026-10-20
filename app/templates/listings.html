@@ -1,10 +1,9 @@
 {% extends "base.html" %}
 {% from "_card.html" import listing_card %}
-{% block title %}Listings — {{ company.name }}{% endblock %}
 
 {% block content %}
 <section class="container section">
-  <h1>Properties in Dubai</h1>
+  <h1>{{ page.h1 }}</h1>
 
   <form class="pillbar" action="/listings" method="get" role="search" id="filterForm">
     {# Tabs submit the form with the new type so the other filters survive the

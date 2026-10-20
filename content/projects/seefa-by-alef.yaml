@@ -1,0 +1,192 @@
+# Seefa by Alef — project page content.
+#
+# Every figure below is from Alef's official factsheet for Building 4
+# (ALSEEF-FACTSHEET-B4-EN). Edit numbers here; no code change needed.
+#
+# status: "live" shows this project on the homepage strip and /projects.
+#         "closed" keeps the page up (and its Google ranking) but drops it
+#         from both, and shows visitors what's available instead.
+#
+# Rules for this page (from the owner): never state a completion or handover
+# date (the factsheet has one — leave it out), never say "private beach",
+# "10 minutes to Dubai Marina" or "most affordable in the UAE", and don't name
+# Maryam Island as Alef's. The factsheet has no payment-plan split, so none is
+# stated.
+
+name: Seefa by Alef
+status: live
+developer: Alef Group
+developer_url: https://alefgroup.ae
+area: Al Khan
+area_slug: al-khan-sharjah
+emirate: Sharjah
+
+title: "Seefa by Alef, Al Khan Sharjah | Beach Apartments from AED 895K"
+meta_description: >-
+  Seefa (SEEF) by Alef: 1, 2 and 3 bedroom apartments on the Al Khan beachfront
+  in Sharjah from AED 895,000. Payment plan on request. Book a call.
+h1: "Seefa by Alef — beachfront apartments in Al Khan, Sharjah"
+hero_line: "One-bedroom apartments on the Al Khan beachfront from AED 895,000."
+sub_line: >-
+  Alef's new waterfront community on the Al Khan beachfront in Sharjah,
+  10–15 minutes from the Dubai border at Al Mamzar. Under construction.
+
+# Used on the homepage "New launches" strip and the /projects index.
+hook: "Beachfront apartments on the Al Khan waterfront, from AED 895,000."
+from_price: "AED 895,000"
+
+whatsapp: "+971525282790"
+whatsapp_text: "Hi, I'm interested in Seefa by Alef"
+price_list_button: "Get the price list"
+
+intro: |
+  Seefa by Alef — written by the developer as SEEF by Alef, and also searched as
+  Al Seef by Alef — is a waterfront residential development by Alef Group on
+  the Al Khan beachfront in Sharjah. It sits on Khan Open Beach, between the
+  Arabian Gulf, Al Khan Lagoon and the Al Mamzar side of the Dubai border.
+
+  Five residential buildings are planned on a 30,287 sqm waterfront site: three
+  directly fronting the beach and two raised above a three-level podium, around
+  a landscaped internal garden. Building 4 has 206 one, two and three bedroom
+  residences.
+
+units_heading: "Building 4: units and starting prices"
+units:
+  - type: "1 bedroom"
+    size: "61 sqm"
+    from: "AED 895,000"
+  - type: "2 bedroom"
+    size: "88 sqm"
+    from: "AED 1,295,000"
+  - type: "3 bedroom"
+    size: "146 sqm"
+    from: "AED 2,195,000"
+units_note: "Source: Alef Seefa factsheet, prices correct as of October 2026."
+
+facts:
+  - label: Developer
+    value: Alef Group
+  - label: Location
+    value: "Al Khan, Sharjah"
+  - label: Payment plan
+    value: "Details available on request"
+  - label: Status
+    value: Under construction
+
+selling_points_heading: "Why buyers look at Seefa"
+selling_points:
+  - heading: "The beach on your doorstep"
+    body: |
+      Alef's factsheet gives the site about 100 m of direct beach frontage,
+      150 m of canal waterfront and 125 m along Al Khan Lagoon. Three of the
+      five buildings face the beach directly, with sea views on three sides of
+      the site, and a publicly accessible beachfront promenade carries around
+      1,500 sqm of shops, cafés and kiosks.
+  - heading: "Beachfront one-bedrooms from AED 895,000"
+    body: |
+      In Building 4, one-bedrooms of 61 sqm start at AED 895,000, two-bedrooms
+      of 88 sqm at AED 1,295,000 and three-bedrooms of 146 sqm at
+      AED 2,195,000, per Alef's October 2026 factsheet.
+  - heading: "A busy, growing area"
+    body: |
+      Al Khan recorded 1,581 property transactions worth about AED 2 billion in
+      January–September 2026 — third by number of deals among the areas named
+      in the Sharjah Real Estate Registration Department's figures, behind
+      Muwaileh Commercial and Al Bataeh, as reported by
+      [Khaleej Times](https://www.khaleejtimes.com/business/sharjah-property-market-grows-14-as-transactions-reach-dh468-billion-in-9-months)
+      on 13 October 2026.
+  - heading: "Built for families"
+    body: |
+      The level-three leisure deck has a family pool, a quiet lap pool, a kids'
+      splash pad and play areas, separate male and female gyms, a teen
+      recreation and youth activity centre and a sensory garden. Living rooms
+      and bedrooms have 3.3 m ceilings.
+
+location_heading: "Getting around"
+location_label: "Approximate drive times, as published by Alef"
+locations:
+  - place: "Al Khan Lagoon"
+    time: "2–5 min"
+  - place: "Al Khan Beach Park"
+    time: "2–5 min"
+  - place: "Matajer Al Khan"
+    time: "4–6 min"
+  - place: "Victoria International School of Sharjah"
+    time: "5–7 min"
+  - place: "Oriana Hospital"
+    time: "5–10 min"
+  - place: "Dubai border (Al Mamzar)"
+    time: "10–15 min"
+  - place: "Dubai International Airport"
+    time: "15–25 min"
+  - place: "Burj Khalifa / Dubai Mall"
+    time: "20–30 min"
+  - place: "Sharjah International Airport"
+    time: "22–25 min"
+  - place: "Mall of the Emirates"
+    time: "30–40 min"
+  - place: "Dubai Marina / JBR"
+    time: "35–45 min"
+
+faq:
+  - q: "Is it Seefa, SEEF or Al Seef by Alef?"
+    a: >-
+      All three names are used for the same Alef Group development on the Al
+      Khan beachfront in Sharjah. Alef writes it SEEF by Alef; Seefa by Alef and
+      Al Seef by Alef are common spellings of the same project.
+  - q: "How much is a one-bedroom at Seefa by Alef?"
+    a: >-
+      In Building 4, one-bedroom apartments of about 61 sqm start from
+      AED 895,000. Two-bedrooms (88 sqm) start from AED 1,295,000 and
+      three-bedrooms (146 sqm) from AED 2,195,000, per Alef's factsheet as of
+      October 2026.
+  - q: "What is the payment plan?"
+    a: >-
+      Payment plan details are available on request. Send us your details using
+      the form on this page and we'll send you the current plan and price list.
+  - q: "Does Seefa have its own beach?"
+    a: >-
+      Seefa sits directly on Khan Open Beach, which is a public beach. The
+      development has direct beachfront access and a publicly accessible
+      waterfront promenade with shops and cafés.
+  - q: "How far is it from Dubai?"
+    a: >-
+      About 10–15 minutes by car to the Dubai border at Al Mamzar, and 20–30
+      minutes to Burj Khalifa and Dubai Mall, according to Alef.
+  - q: "Can foreigners buy at Seefa?"
+    a: >-
+      Sharjah allows non-citizens to own property outright in projects the
+      emirate has approved for it. Ask us and we'll confirm Seefa's ownership
+      status with Alef in writing before you reserve.
+  - q: "Can I use a mortgage?"
+    a: >-
+      Off-plan purchases are paid to the developer in instalments, and some
+      buyers use a UAE mortgage for the payment due on completion. We can
+      introduce you to mortgage advisers who can tell you what you'd qualify for.
+
+form:
+  heading: "Get the Seefa price list"
+  intro: "Tell us what you're looking for and we'll send the price list, floor plans and payment plan."
+  unit_types: ["1 bedroom", "2 bedroom", "3 bedroom"]
+  budgets: ["Up to AED 1M", "AED 1M – 1.5M", "AED 1.5M – 2.5M", "Over AED 2.5M"]
+  purposes: ["To live in", "To invest"]
+
+# Drop Alef's official renders into public/static/projects/seefa/ using these
+# names. A slot with no file simply doesn't show.
+images:
+  dir: /static/projects/seefa
+  alt: "Seefa by Alef beachfront apartments, Al Khan Sharjah - {slot}"
+  hero: hero.jpg
+  gallery: [beachfront.jpg, aerial.jpg, interior-1.jpg, interior-2.jpg, amenities.jpg]
+
+sources:
+  - title: "Seefa (SEEF) by Alef — Building 4 factsheet"
+    publisher: Alef Group
+    date: "October 2026"
+    url: ""
+  - title: "Sharjah property market grows 14% as transactions reach Dh46.8 billion in 9 months"
+    publisher: Khaleej Times
+    date: "13 October 2026"
+    url: "https://www.khaleejtimes.com/business/sharjah-property-market-grows-14-as-transactions-reach-dh468-billion-in-9-months"
+
+updated: "2026-10-20"

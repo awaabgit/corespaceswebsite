@@ -3,7 +3,7 @@
 <div class="card reveal">
   <a href="/listings/{{ listing.slug }}" class="card-media">
     {% if listing.images and listing.images|length %}
-      <img src="{{ listing.images[0] }}" alt="{{ listing.title }}" loading="lazy">
+      <img src="{{ listing.images[0] }}" alt="{{ seo.listing_alt(listing, 1) }}" loading="lazy">
     {% else %}
       <div class="card-media placeholder">
         <img class="ph-logo" src="/static/core-spaces-logo.jpg" alt="">
@@ -16,7 +16,7 @@
   </a>
   <a href="/listings/{{ listing.slug }}" class="card-body">
     <p class="card-price">{{ fmt_price(listing.price, listing.currency, listing.type) }}</p>
-    <h3 class="card-title">{{ listing.title }}</h3>
+    <h3 class="card-title">{{ seo.tidy_name(listing.title) }}</h3>
     <p class="card-loc">{{ listing.location }}{% if listing.community %} · {{ listing.community }}{% endif %}</p>
     <ul class="card-specs">
       {% if listing.beds %}<li>{{ bed() }} {{ listing.beds }}</li>{% endif %}
@@ -29,4 +29,39 @@
     <a class="btn-wa" href="{{ wa_link(listing.agent_phone or company.phone, 'Hi, I’m interested in ' ~ listing.title) }}" target="_blank" rel="noopener">{{ whatsapp() }} WhatsApp</a>
   </div>
 </div>
+{% endmacro %}
+
+{% macro project_card(p, t) %}
+<a class="pcard reveal" href="/projects/{{ p.slug }}">
+  <div class="pcard-media">
+    {% if p.images and p.images.hero %}
+      <img src="{{ p.images.dir }}/{{ p.images.hero }}" alt="{{ fill(p.images.alt, slot='hero') }}"
+           loading="lazy" width="800" height="500" onerror="this.remove()">
+    {% endif %}
+    <span class="pcard-place">{{ p.area }}, {{ p.emirate }}</span>
+  </div>
+  <div class="pcard-body">
+    <h3>{{ p.name }}</h3>
+    {% if p.from_price %}<p class="pcard-price">{{ t.projects.from }} {{ p.from_price }}</p>{% endif %}
+    <p class="muted">{{ p.hook }}</p>
+    <span class="link-more">{{ t.projects.view }}</span>
+  </div>
+</a>
+{% endmacro %}
+
+{% macro area_tile(a) %}
+<a class="tile reveal" href="/areas/{{ a.slug }}">
+  <span class="tile-emirate">{{ a.emirate }}</span>
+  <strong>{{ a.area }}</strong>
+  <span class="muted">{{ a.tile_line }}</span>
+</a>
+{% endmacro %}
+
+{% macro insight_card(art, t) %}
+<a class="icard reveal" href="/insights/{{ art.slug }}">
+  <span class="tile-emirate">{{ fmt_date(art.published) }}</span>
+  <h3>{{ art.h1 }}</h3>
+  <p class="muted">{{ art.summary }}</p>
+  <span class="link-more">{{ t.insights.read }}</span>
+</a>
 {% endmacro %}

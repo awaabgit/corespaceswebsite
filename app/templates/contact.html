@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% block title %}Contact — {{ company.name }}{% endblock %}
 
 {% block content %}
 <section class="container section narrow">
@@ -28,7 +27,10 @@
       <p><a href="tel:{{ company.phone }}">{{ company.phone }}</a></p>
       <p><a href="mailto:{{ company.email }}">{{ company.email }}</a></p>
       <h4>Office</h4>
-      <p class="muted">{{ company.address }}</p>
+      <p class="muted">{{ cfg.STREET_ADDRESS }}, {{ cfg.CITY }}</p>
+      <h4>{{ t.about.hours_label }}</h4>
+      <p class="muted">{{ t.about.hours }}</p>
+      <p class="muted"><a href="/listings">{{ t.not_found.listings }}</a> · <a href="/areas">{{ t.not_found.areas }}</a> · <a href="/projects">{{ t.not_found.projects }}</a></p>
     </div>
   </div>
 </section>

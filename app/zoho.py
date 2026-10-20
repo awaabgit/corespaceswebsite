@@ -565,6 +565,10 @@ def _normalise(rec: dict[str, Any]) -> dict[str, Any]:
         "off_plan": "off plan" in str(_pick(rec, "Status", default="") or "").lower(),
         "featured": bool(_pick(rec, "Featured", default=False)),
         "description": _pick(rec, "Description", default=""),
+        # Listing permit / Trakheesi number. Off until PERMIT_FIELD names the
+        # Zoho field that holds it; then the listing page shows "Permit No. …".
+        "permit": (str(_pick(rec, config.PERMIT_FIELD) or "").strip()
+                   if config.PERMIT_FIELD else ""),
         "images": _images(rec),
         "amenities": _amenities(rec),
         "agent_name": agent_name,
