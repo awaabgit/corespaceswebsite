@@ -120,6 +120,43 @@ SHOW_SAMPLES_ON_FAILURE = _get("SHOW_SAMPLES_ON_FAILURE", "").lower() in ("1", "
 DEBUG_KEY = _get("DEBUG_KEY")
 
 
+# --- Business identity (SEO, structured data, footer) -------------------------
+# One place for everything a search engine or a regulator wants to see. Anything
+# left blank is simply not rendered, so partial information never ships as an
+# empty label or a broken tag.
+LEGAL_NAME = _get("LEGAL_NAME", "Core Spaces Real Estate L.L.C")
+BRAND_NAME = COMPANY_NAME
+# Office Registration Number — the brokerage's DLD/RERA number. Shown in the
+# footer and used as the organisation's identifier in structured data.
+ORN = _get("ORN")
+STREET_ADDRESS = _get("STREET_ADDRESS",
+                      "Office 1201, The Regal Tower, Al Mustaqbal Street, Business Bay")
+CITY = _get("CITY", "Dubai")
+COUNTRY = _get("COUNTRY", "AE")
+BUSINESS_PHONE = _get("BUSINESS_PHONE", COMPANY_PHONE)
+BUSINESS_EMAIL = _get("BUSINESS_EMAIL", COMPANY_EMAIL)
+
+
+def social_urls() -> list[str]:
+    """SOCIAL_URLS="https://instagram.com/x,https://linkedin.com/company/y" """
+    return [u.strip() for u in _get("SOCIAL_URLS").split(",") if u.strip()]
+
+
+# --- Analytics / verification -------------------------------------------------
+# Each tag renders only when its value is set, so an unconfigured site ships no
+# empty script tags and no half-wired analytics.
+GA4_ID = _get("GA4_ID")
+GSC_VERIFICATION = _get("GSC_VERIFICATION",
+                        "T-yE5uhifqGvHZ7U7eozSxlHqpsxLCm2jRxf21HG2uA")
+# Key for IndexNow (Bing/Yandex instant indexing). Blank disables the ping.
+INDEXNOW_KEY = _get("INDEXNOW_KEY")
+
+# The Zoho field holding the listing permit / Trakheesi number, if the CRM has
+# one. Blank means the permit line is not rendered at all. Set this to the
+# field's Zoho API name to switch it on without a code change.
+PERMIT_FIELD = _get("PERMIT_FIELD")
+
+
 def supabase_enabled() -> bool:
     return bool(SUPABASE_URL and SUPABASE_KEY)
 
