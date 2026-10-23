@@ -159,6 +159,9 @@ def _render(request: Request, name: str, page: dict, status_code: int = 200, **c
     page["og_image_abs"] = og if str(og).startswith("http") else f"{base}{og}"
     page["canonical_abs"] = (f"{base}{page['canonical']}" if page.get("canonical")
                              else _canonical_url(request))
+    host = (request.url.hostname or "").lower()
+    page["ga4"] = ("" if host in ("localhost", "127.0.0.1", "testserver")
+                   else config.GA4_ID)
     return templates.TemplateResponse(
         request, name, {"page": page, "t": content.site(), **ctx}, status_code=status_code)
 

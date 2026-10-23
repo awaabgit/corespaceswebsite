@@ -35,13 +35,13 @@
   <script type="application/ld+json">{{ block|safe }}</script>
   {% endfor %}
 
-  {% if cfg.GA4_ID %}
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ cfg.GA4_ID|urlencode }}"></script>
+  {% if page.ga4 %}
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ page.ga4|urlencode }}"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', {{ cfg.GA4_ID|tojson }});
+    gtag('config', {{ page.ga4|tojson }});
     // The three things we want to count: someone tapping Call, someone tapping
     // WhatsApp, and an enquiry form being sent.
     document.addEventListener('click', function (e) {

@@ -145,7 +145,7 @@ def social_urls() -> list[str]:
 # --- Analytics / verification -------------------------------------------------
 # Each tag renders only when its value is set, so an unconfigured site ships no
 # empty script tags and no half-wired analytics.
-GA4_ID = _get("GA4_ID")
+GA4_ID = _get("GA4_ID", "G-XQBYB54MBB")
 GSC_VERIFICATION = _get("GSC_VERIFICATION",
                         "T-yE5uhifqGvHZ7U7eozSxlHqpsxLCm2jRxf21HG2uA")
 # Key for IndexNow (Bing/Yandex instant indexing). Blank disables the ping.
